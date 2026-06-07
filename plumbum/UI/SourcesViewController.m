@@ -140,6 +140,13 @@
 }
 
 - (void)configureNavigationBar {
+    self.navigationController.navigationBar.tintColor = [SileoColors sileoBlue];
+    
+    UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addSource)];
+    UIBarButtonItem *refreshButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh target:self action:@selector(refreshAllSources)];
+    
+    self.navigationItem.rightBarButtonItems = @[addButton, refreshButton];
+    
     if (@available(iOS 13.0, *)) {
         UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
         [appearance configureWithOpaqueBackground];
@@ -150,17 +157,9 @@
         self.navigationController.navigationBar.scrollEdgeAppearance = appearance;
     } else {
         self.navigationController.navigationBar.barTintColor = [SileoColors background];
-        self.navigationController.navigationBar.titleTextAttributes = @{NSForegroundColorAttributeName: [SileoColors primaryText}];
+        self.navigationController.navigationBar.titleTextAttributes = @{NSForegroundColorAttributeName: [SileoColors primaryText]};
     }
-    
-    self.navigationController.navigationBar.tintColor = [SileoColors sileoBlue];
-    
-    UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addSource)];
-    UIBarButtonItem *refreshButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh target:self action:@selector(refreshAllSources)];
-    
-    self.navigationItem.rightBarButtonItems = @[addButton, refreshButton];
 }
-
 - (void)loadRepositories {
     // Add default repositories if none exist
     if (_repoManager.repositories.count == 0) {
@@ -284,3 +283,4 @@
 }
 
 @end
+
