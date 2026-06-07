@@ -198,7 +198,7 @@
         [infoRow.heightAnchor constraintEqualToConstant:44],
         [titleLabel.leadingAnchor constraintEqualToAnchor:infoRow.leadingAnchor constant:16],
         [titleLabel.centerYAnchor constraintEqualToAnchor:infoRow.centerYAnchor],
-        [titleLabel.widthAnchor constraintEqualToAnchor:100],
+        [titleLabel.widthAnchor constraintEqualToConstant:100],
         [valueLabel.leadingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor constant:8],
         [valueLabel.trailingAnchor constraintEqualToAnchor:infoRow.trailingAnchor constant:-16],
         [valueLabel.centerYAnchor constraintEqualToAnchor:infoRow.centerYAnchor]
