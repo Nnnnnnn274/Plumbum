@@ -110,8 +110,7 @@ jobs:
           echo "  - Archive file is corrupted or incomplete"
           echo "  - exportOptions.plist is missing or invalid"
           echo "  - Export method is not supported"
-          echo "Solution: Check exportOptions.plist and archive integrity"
-          exit 1
+          echo "Solution: Falling back to manual IPA packaging from the archive."
         }
 
     - name: Why IPA export failed
@@ -128,9 +127,21 @@ jobs:
     - name: Create IPA manually if needed
       id: create_ipa
       run: |
-        if [ -f "build/plumbum.app/plumbum" ]; then
+        if [ ! -f "build/plumbum.ipa" ]; then
+          APP_PATH="$(find build/plumbum.xcarchive/Products/Applications -maxdepth 1 -name '*.app' -print -quit)"
+
+          if [ -z "$APP_PATH" ]; then
+            echo "Manual IPA creation failed!"
+            echo "Reason: Could not find an .app bundle inside build/plumbum.xcarchive."
+            echo "Solution: Check whether the archive step produced Products/Applications/*.app."
+            exit 1
+          fi
+
+          rm -rf build/Payload
+          mkdir -p build/Payload
+          cp -R "$APP_PATH" build/Payload/
           cd build
-          zip -r plumbum.ipa plumbum.app || {
+          zip -r plumbum.ipa Payload || {
             echo "Manual IPA creation failed!"
             echo "Reason: zip command failed"
             echo "Possible causes:"
@@ -149,8 +160,8 @@ jobs:
         echo "Manual IPA creation failed!"
         echo "Reason: The fallback zip command could not package the app bundle."
         echo "Possible causes:"
-        echo "  - build/plumbum.app is missing or incomplete"
-        echo "  - The app bundle path/name differs from the workflow"
+        echo "  - build/plumbum.xcarchive/Products/Applications/*.app is missing or incomplete"
+        echo "  - The archive app bundle path/name differs from the workflow"
         echo "  - zip failed because of filesystem or disk space issues"
         echo "Solution: Check the archive/export output paths and confirm the app bundle exists."
         
