@@ -18,14 +18,25 @@ build:
 # Build IPA
 ipa:
 	@echo "Building IPA..."
-	./build.sh
+	@./build.sh || { \
+		echo "IPA build failed!"; \
+		echo "Reason: build.sh script failed"; \
+		echo "Solution: Check build.sh output for detailed error information"; \
+		exit 1; \
+	}
 
 # Clean build artifacts
 clean:
 	@echo "Cleaning..."
-	rm -rf build
-	rm -rf plumbum/XPF/output
-	cd plumbum/XPF && make clean
+	@rm -rf build || { \
+		echo "Clean failed!"; \
+		echo "Reason: Could not remove build directories"; \
+		echo "Possible causes:"; \
+		echo "  - Files are in use by another process"; \
+		echo "  - Insufficient permissions"; \
+		echo "Solution: Close Xcode and try again"; \
+		exit 1; \
+	}
 
 # Install dependencies
 deps:

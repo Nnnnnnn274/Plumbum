@@ -33,7 +33,17 @@ jobs:
           -derivedDataPath build/DerivedData \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
-          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_ALLOWED=NO || {
+          echo "Build failed!"
+          echo "Reason: xcodebuild archive command failed"
+          echo "Possible causes:"
+          echo "  - Xcode project file is corrupted"
+          echo "  - Scheme 'plumbum' does not exist"
+          echo "  - Missing source files or dependencies"
+          echo "  - Build settings are invalid"
+          echo "Solution: Check xcode project structure"
+          exit 1
+        }
           
     - name: Export IPA
       run: |
@@ -43,13 +53,31 @@ jobs:
           -exportOptionsPlist exportOptions.plist \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
-          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_ALLOWED=NO || {
+          echo "Export failed!"
+          echo "Reason: xcodebuild exportArchive command failed"
+          echo "Possible causes:"
+          echo "  - Archive file is corrupted or incomplete"
+          echo "  - exportOptions.plist is missing or invalid"
+          echo "  - Export method is not supported"
+          echo "Solution: Check exportOptions.plist and archive integrity"
+          exit 1
+        }
           
     - name: Create IPA manually if needed
       run: |
         if [ -f "build/plumbum.app/plumbum" ]; then
           cd build
-          zip -r plumbum.ipa plumbum.app
+          zip -r plumbum.ipa plumbum.app || {
+            echo "Manual IPA creation failed!"
+            echo "Reason: zip command failed"
+            echo "Possible causes:"
+            echo "  - .app bundle is incomplete or corrupted"
+            echo "  - Insufficient disk space"
+            echo "Solution: Check .app bundle contents and disk space"
+            cd ..
+            exit 1
+          }
           cd ..
         fi
         
