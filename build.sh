@@ -29,15 +29,6 @@ rm -rf "${ARCHIVE_PATH}"
 rm -rf "${DERIVED_DATA_PATH}"
 rm -rf "${IPA_OUTPUT_PATH}/${PROJECT_NAME}.ipa"
 
-# Build XPF subproject
-echo -e "${YELLOW}Building XPF subproject...${NC}"
-cd plumbum/XPF
-make all || {
-    echo -e "${RED}Failed to build XPF${NC}"
-    exit 1
-}
-cd ../..
-
 # Build the app
 echo -e "${YELLOW}Building ${PROJECT_NAME}...${NC}"
 xcodebuild archive \

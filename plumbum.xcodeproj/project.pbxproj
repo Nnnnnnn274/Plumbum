@@ -177,7 +177,6 @@
 				AAA297732F72D439000B5902 /* Sources */,
 				AAA297742F72D439000B5902 /* Frameworks */,
 				AAA297752F72D439000B5902 /* Resources */,
-				AAA2986F2F741423000B5902 /* ShellScript */,
 				AAA2989D2F7418CC000B5902 /* CopyFiles */,
 			);
 			buildRules = (
@@ -252,23 +251,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		AAA2986F2F741423000B5902 /* ShellScript */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\ncd \"$SRCROOT/plumbum/XPF\"\nmake all || exit 1\n";
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */

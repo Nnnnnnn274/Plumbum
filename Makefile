@@ -15,11 +15,6 @@ build:
 		CODE_SIGNING_REQUIRED=NO \
 		CODE_SIGNING_ALLOWED=NO
 
-# Build XPF subproject
-xpf:
-	@echo "Building XPF..."
-	cd plumbum/XPF && make all
-
 # Build IPA
 ipa:
 	@echo "Building IPA..."
@@ -34,8 +29,7 @@ clean:
 
 # Install dependencies
 deps:
-	@echo "Installing dependencies..."
-	cd plumbum/XPF && make deps
+	@echo "No external dependencies required"
 
 # Show help
 help:
