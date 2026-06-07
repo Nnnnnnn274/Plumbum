@@ -13,17 +13,54 @@ jobs:
     
     steps:
     - name: Checkout repository
+      id: checkout
       uses: actions/checkout@v4
+
+    - name: Why checkout failed
+      if: ${{ failure() && steps.checkout.outcome == 'failure' }}
+      run: |
+        echo "Checkout failed!"
+        echo "Reason: GitHub could not download the repository contents."
+        echo "Possible causes:"
+        echo "  - The repository, branch, or commit no longer exists"
+        echo "  - GitHub token permissions are too restricted"
+        echo "  - A temporary GitHub network/service issue occurred"
+        echo "Solution: Check the workflow branch, repository permissions, and rerun the job."
       
     - name: Set up Xcode
+      id: setup_xcode
       uses: maxim-lobanov/setup-xcode@v1
       with:
         xcode-version: latest-stable
+
+    - name: Why Xcode setup failed
+      if: ${{ failure() && steps.setup_xcode.outcome == 'failure' }}
+      run: |
+        echo "Xcode setup failed!"
+        echo "Reason: The requested Xcode version could not be selected on the macOS runner."
+        echo "Possible causes:"
+        echo "  - latest-stable is not available on the selected runner image"
+        echo "  - The setup-xcode action changed behavior or had a transient failure"
+        echo "  - The runner image is missing the required Xcode install"
+        echo "Solution: Pin xcode-version to a known installed version or check the macOS runner image."
       
     - name: Show Xcode version
+      id: show_xcode_version
       run: xcodebuild -version
+
+    - name: Why Xcode version check failed
+      if: ${{ failure() && steps.show_xcode_version.outcome == 'failure' }}
+      run: |
+        echo "Xcode version check failed!"
+        echo "Reason: xcodebuild could not run after Xcode setup."
+        echo "Possible causes:"
+        echo "  - Xcode command line tools are unavailable"
+        echo "  - DEVELOPER_DIR points to an invalid Xcode installation"
+        echo "  - The macOS runner image has an Xcode problem"
+        echo "Solution: Check the Set up Xcode step and the runner image."
       
     - name: Build archive
+      id: build_archive
       run: |
         xcodebuild archive \
           -project plumbum.xcodeproj \
@@ -44,8 +81,21 @@ jobs:
           echo "Solution: Check xcode project structure"
           exit 1
         }
+
+    - name: Why archive failed
+      if: ${{ failure() && steps.build_archive.outcome == 'failure' }}
+      run: |
+        echo "Archive failed!"
+        echo "Reason: xcodebuild could not compile or archive the app."
+        echo "Possible causes:"
+        echo "  - Objective-C compile errors in files listed above"
+        echo "  - Missing files referenced by plumbum.xcodeproj"
+        echo "  - Invalid build settings, scheme, SDK, or deployment target"
+        echo "  - Code signing settings still requiring a profile despite disabled signing flags"
+        echo "Solution: Search the Build archive log above for the first 'error:' line and fix that source file first."
           
     - name: Export IPA
+      id: export_ipa
       run: |
         xcodebuild -exportArchive \
           -archivePath build/plumbum.xcarchive \
@@ -63,8 +113,20 @@ jobs:
           echo "Solution: Check exportOptions.plist and archive integrity"
           exit 1
         }
+
+    - name: Why IPA export failed
+      if: ${{ failure() && steps.export_ipa.outcome == 'failure' }}
+      run: |
+        echo "IPA export failed!"
+        echo "Reason: xcodebuild could not export build/plumbum.xcarchive into an IPA."
+        echo "Possible causes:"
+        echo "  - The archive was not created correctly"
+        echo "  - exportOptions.plist is invalid for this archive"
+        echo "  - Unsigned archive export is not allowed with the current export method"
+        echo "Solution: Check exportOptions.plist and inspect build/plumbum.xcarchive."
           
     - name: Create IPA manually if needed
+      id: create_ipa
       run: |
         if [ -f "build/plumbum.app/plumbum" ]; then
           cd build
@@ -80,17 +142,52 @@ jobs:
           }
           cd ..
         fi
+
+    - name: Why manual IPA creation failed
+      if: ${{ failure() && steps.create_ipa.outcome == 'failure' }}
+      run: |
+        echo "Manual IPA creation failed!"
+        echo "Reason: The fallback zip command could not package the app bundle."
+        echo "Possible causes:"
+        echo "  - build/plumbum.app is missing or incomplete"
+        echo "  - The app bundle path/name differs from the workflow"
+        echo "  - zip failed because of filesystem or disk space issues"
+        echo "Solution: Check the archive/export output paths and confirm the app bundle exists."
         
     - name: Upload IPA artifact
+      id: upload_ipa
       uses: actions/upload-artifact@v4
       with:
         name: plumbum-ipa
         path: build/plumbum.ipa
         retention-days: 30
+
+    - name: Why IPA artifact upload failed
+      if: ${{ failure() && steps.upload_ipa.outcome == 'failure' }}
+      run: |
+        echo "IPA artifact upload failed!"
+        echo "Reason: actions/upload-artifact could not find or upload build/plumbum.ipa."
+        echo "Possible causes:"
+        echo "  - build/plumbum.ipa was never created"
+        echo "  - The workflow path does not match the generated IPA name/location"
+        echo "  - Artifact upload service had a temporary failure"
+        echo "Solution: Check the Export IPA and Create IPA manually steps for the actual output path."
         
     - name: Upload archive artifact
+      id: upload_archive
       uses: actions/upload-artifact@v4
       with:
         name: plumbum-xcarchive
         path: build/plumbum.xcarchive
         retention-days: 7
+
+    - name: Why archive artifact upload failed
+      if: ${{ failure() && steps.upload_archive.outcome == 'failure' }}
+      run: |
+        echo "Archive artifact upload failed!"
+        echo "Reason: actions/upload-artifact could not find or upload build/plumbum.xcarchive."
+        echo "Possible causes:"
+        echo "  - The archive step failed or wrote to a different path"
+        echo "  - build/plumbum.xcarchive is empty or missing"
+        echo "  - Artifact upload service had a temporary failure"
+        echo "Solution: Check the Build archive step and confirm the archivePath matches this upload path."

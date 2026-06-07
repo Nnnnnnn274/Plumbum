@@ -200,7 +200,7 @@
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     PackageCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PackageCell" forIndexPath:indexPath];
-    Package *package = self.filteredPackages[indexPath.row];
+    PlumbumPackage *package = self.filteredPackages[indexPath.row];
     [cell configureWithPackage:package];
     return cell;
 }
@@ -212,7 +212,7 @@
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    Package *package = self.filteredPackages[indexPath.row];
+    PlumbumPackage *package = self.filteredPackages[indexPath.row];
     PackageDetailViewController *detailVC = [[PackageDetailViewController alloc] initWithPackage:package];
     [self.navigationController pushViewController:detailVC animated:YES];
 }
