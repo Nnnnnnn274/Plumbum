@@ -88,7 +88,7 @@
 - (void)configureWithPackage:(PlumbumPackage *)package {
     _iconImageView.image = [UIImage systemImageNamed:@"app.fill"];
     _nameLabel.text = package.name;
-    _descriptionLabel.text = package.description;
+    _descriptionLabel.text = package.packageDescription;
     _versionLabel.text = [NSString stringWithFormat:@"v%@", package.version];
     
     if (package.installStatus == PackageInstallStatusInstalled) {

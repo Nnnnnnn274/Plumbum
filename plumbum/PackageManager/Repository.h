@@ -19,7 +19,7 @@ typedef NS_ENUM(NSInteger, RepositoryType) {
 
 @property (nonatomic, strong) NSString *name;
 @property (nonatomic, strong) NSString *url;
-@property (nonatomic, strong) NSString *description;
+@property (nonatomic, strong) NSString *repoDescription;
 @property (nonatomic, strong) NSString *distribution;
 @property (nonatomic, strong) NSArray<NSString *> *components;
 @property (nonatomic, strong) NSString *origin;

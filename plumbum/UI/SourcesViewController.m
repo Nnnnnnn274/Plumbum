@@ -93,7 +93,7 @@
     _iconImageView.image = [UIImage systemImageNamed:@"globe"];
     _nameLabel.text = repo.name;
     _urlLabel.text = repo.url;
-    _packageCountLabel.text = repo.description;
+    _packageCountLabel.text = repo.repoDescription;
 }
 
 @end
@@ -187,7 +187,7 @@
             Repository *repo = [[Repository alloc] init];
             repo.name = @"Custom Repository";
             repo.url = url;
-            repo.description = @"Custom repository";
+            repo.repoDescription = @"Custom repository";
             repo.trusted = NO;
             
             NSError *error = nil;
@@ -251,7 +251,7 @@
     Repository *repo = self.repositories[indexPath.row];
     
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:repo.name
-                                                                   message:repo.description
+                                                                   message:repo.repoDescription
                                                             preferredStyle:UIAlertControllerStyleActionSheet];
     
     UIAlertAction *refreshAction = [UIAlertAction actionWithTitle:@"Refresh" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {

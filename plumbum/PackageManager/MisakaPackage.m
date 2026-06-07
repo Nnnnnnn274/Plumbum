@@ -77,7 +77,7 @@
     _packageID = _metadata[@"packageID"] ?: @"";
     _name = _metadata[@"name"] ?: _packageID;
     _version = _metadata[@"version"] ?: @"1.0";
-    _description = _metadata[@"description"] ?: @"";
+    _misakaDescription = _metadata[@"description"] ?: @"";
     _author = _metadata[@"author"] ?: @"Unknown";
     _section = _metadata[@"section"] ?: @"Utilities";
     _iconPath = _metadata[@"iconPath"];
@@ -141,7 +141,7 @@
     [controlContent appendFormat:@"Package: %@\n", misakaPackage.packageID];
     [controlContent appendFormat:@"Name: %@\n", misakaPackage.name];
     [controlContent appendFormat:@"Version: %@\n", misakaPackage.version];
-    [controlContent appendFormat:@"Description: %@\n", misakaPackage.description];
+    [controlContent appendFormat:@"Description: %@\n", misakaPackage.misakaDescription];
     [controlContent appendFormat:@"Author: %@\n", misakaPackage.author];
     [controlContent appendFormat:@"Section: %@\n", misakaPackage.section];
     [controlContent appendFormat:@"Architecture: iphoneos-arm\n"];

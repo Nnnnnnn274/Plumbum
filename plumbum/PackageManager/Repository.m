@@ -15,7 +15,7 @@
     if (self) {
         _name = dict[@"name"] ?: @"Unknown Repository";
         _url = dict[@"url"] ?: @"";
-        _description = dict[@"description"] ?: @"";
+        _repoDescription = dict[@"description"] ?: @"";
         _distribution = dict[@"distribution"];
         _components = dict[@"components"];
         _origin = dict[@"origin"];
@@ -46,7 +46,7 @@
     
     if (_name) dict[@"name"] = _name;
     if (_url) dict[@"url"] = _url;
-    if (_description) dict[@"description"] = _description;
+    if (_repoDescription) dict[@"description"] = _repoDescription;
     if (_distribution) dict[@"distribution"] = _distribution;
     if (_components) dict[@"components"] = _components;
     if (_origin) dict[@"origin"] = _origin;

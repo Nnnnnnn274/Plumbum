@@ -226,7 +226,7 @@
     _iconImageView.image = [UIImage systemImageNamed:@"app.fill"];
     _nameLabel.text = _package.name;
     _authorLabel.text = [NSString stringWithFormat:@"by %@", _package.author];
-    _descriptionTextView.text = _package.description;
+    _descriptionTextView.text = _package.packageDescription;
     
     if (_package.installStatus == PackageInstallStatusInstalled) {
         [_installButton setTitle:@"Open" forState:UIControlStateNormal];

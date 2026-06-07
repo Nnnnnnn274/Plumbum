@@ -20,7 +20,7 @@ typedef NS_ENUM(NSInteger, PackageInstallStatus) {
 @property (nonatomic, strong) NSString *packageID;
 @property (nonatomic, strong) NSString *name;
 @property (nonatomic, strong) NSString *version;
-@property (nonatomic, strong) NSString *description;
+@property (nonatomic, strong) NSString *packageDescription;
 @property (nonatomic, strong) NSString *author;
 @property (nonatomic, strong) NSString *section;
 @property (nonatomic, strong) NSString *architecture;

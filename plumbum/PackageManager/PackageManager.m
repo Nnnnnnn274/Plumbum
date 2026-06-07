@@ -18,7 +18,7 @@
         _packageID = dict[@"Package"] ?: @"";
         _name = dict[@"Name"] ?: dict[@"Package"] ?: @"";
         _version = dict[@"Version"] ?: @"1.0";
-        _description = dict[@"Description"] ?: @"";
+        _packageDescription = dict[@"Description"] ?: @"";
         _author = dict[@"Author"] ?: dict[@"Maintainer"] ?: @"Unknown";
         _section = dict[@"Section"] ?: @"Utilities";
         _architecture = dict[@"Architecture"] ?: @"iphoneos-arm";
@@ -44,7 +44,7 @@
     if (_packageID) dict[@"Package"] = _packageID;
     if (_name) dict[@"Name"] = _name;
     if (_version) dict[@"Version"] = _version;
-    if (_description) dict[@"Description"] = _description;
+    if (_packageDescription) dict[@"Description"] = _packageDescription;
     if (_author) dict[@"Author"] = _author;
     if (_section) dict[@"Section"] = _section;
     if (_architecture) dict[@"Architecture"] = _architecture;
