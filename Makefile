@@ -1,6 +1,8 @@
 # Makefile for plumbum
+# NOTE: This project is designed to be built via GitHub Actions CI
+# Local building requires macOS with Xcode installed
 
-.PHONY: all clean build xpf ipa help
+.PHONY: all clean build ipa help
 
 # Default target
 all: build
@@ -18,10 +20,12 @@ build:
 # Build IPA
 ipa:
 	@echo "Building IPA..."
+	@echo "NOTE: This requires macOS with Xcode installed"
+	@echo "For automated building, push to GitHub to trigger CI"
 	@./build.sh || { \
 		echo "IPA build failed!"; \
 		echo "Reason: build.sh script failed"; \
-		echo "Solution: Check build.sh output for detailed error information"; \
+		echo "Solution: Use GitHub Actions CI or build on macOS with Xcode"; \
 		exit 1; \
 	}
 

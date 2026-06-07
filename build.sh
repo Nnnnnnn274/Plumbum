@@ -2,6 +2,8 @@
 
 # build.sh - Build script for plumbum IPA
 # This script builds the iOS app and creates an IPA file
+# NOTE: This script requires macOS with Xcode installed
+# For automated building, use GitHub Actions CI instead
 
 set -e
 
