@@ -24,9 +24,16 @@
         _architecture = dict[@"Architecture"] ?: @"iphoneos-arm";
         _maintainer = dict[@"Maintainer"] ?: @"Unknown";
         
-        NSArray *deps = dict[@"Depends"];
+        id deps = dict[@"Depends"];
         if ([deps isKindOfClass:[NSString class]]) {
-            _dependencies = [deps componentsSeparatedByString:@","];
+            NSMutableArray<NSString *> *dependencies = [NSMutableArray array];
+            for (NSString *dependency in [(NSString *)deps componentsSeparatedByString:@","]) {
+                NSString *trimmedDependency = [dependency stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+                if (trimmedDependency.length > 0) {
+                    [dependencies addObject:trimmedDependency];
+                }
+            }
+            _dependencies = [dependencies copy];
         } else if ([deps isKindOfClass:[NSArray class]]) {
             _dependencies = deps;
         } else {
@@ -358,9 +365,6 @@
     NSString *tempDir = [NSTemporaryDirectory() stringByAppendingPathComponent:[[NSUUID UUID] UUIDString]];
     NSFileManager *fm = [NSFileManager defaultManager];
     [fm createDirectoryAtPath:tempDir withIntermediateDirectories:YES attributes:nil error:nil];
-    
-    // Extract control file using ar (simplified approach)
-    NSString *controlPath = [tempDir stringByAppendingPathComponent:@"control"];
     
     // For now, return a minimal control dict
     // In production, you'd extract the actual control.tar.gz from the .deb/.plumbum file
