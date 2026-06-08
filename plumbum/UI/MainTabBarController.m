@@ -10,6 +10,7 @@
 #import "PackageListViewController.h"
 #import "SourcesViewController.h"
 #import "ExploitViewController.h"
+#import "SettingsViewController.h"
 
 @interface MainTabBarController ()
 @end
@@ -66,9 +67,7 @@
                                                   selectedImage:[UIImage systemImageNamed:@"bolt.fill"]];
     
     // Settings tab
-    UIViewController *settingsVC = [[UIViewController alloc] init];
-    settingsVC.view.backgroundColor = [SileoColors background];
-    settingsVC.title = @"Settings";
+    SettingsViewController *settingsVC = [[SettingsViewController alloc] init];
     UINavigationController *settingsNav = [[UINavigationController alloc] initWithRootViewController:settingsVC];
     settingsNav.tabBarItem = [[UITabBarItem alloc] initWithTitle:@"Settings" 
                                                            image:[UIImage systemImageNamed:@"gear"] 

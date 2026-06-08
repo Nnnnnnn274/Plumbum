@@ -7,6 +7,7 @@
 
 #import <UIKit/UIKit.h>
 #import "PackageCell.h"
+#import "../PackageManager/Repository.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -14,6 +15,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, strong) NSString *section;
 @property (nonatomic, strong) NSArray<PlumbumPackage *> *packages;
+@property (nonatomic, strong, nullable) Repository *repository;
+
+- (instancetype)initWithRepository:(nullable Repository *)repository;
 
 @end
 

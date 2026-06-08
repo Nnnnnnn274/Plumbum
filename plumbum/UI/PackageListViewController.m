@@ -10,6 +10,7 @@
 #import "PackageDetailViewController.h"
 #import "../PackageManager/PackageManager.h"
 #import "../PackageManager/Repository.h"
+#import "../kexploit/kexploit_opa334.h"
 
 @import UniformTypeIdentifiers;
 
@@ -19,15 +20,29 @@
 @property (nonatomic, strong) NSArray<PlumbumPackage *> *filteredPackages;
 @property (nonatomic, strong) UIRefreshControl *refreshControl;
 @property (nonatomic, assign) BOOL exploitRunning;
+@property (nonatomic, strong) RepositoryManager *repoManager;
 @end
 
 @implementation PackageListViewController
+
+- (instancetype)initWithRepository:(Repository *)repository {
+    self = [super init];
+    if (self) {
+        _repository = repository;
+        _repoManager = [RepositoryManager sharedManager];
+    }
+    return self;
+}
+
+- (instancetype)init {
+    return [self initWithRepository:nil];
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
     
     self.view.backgroundColor = [SileoColors background];
-    self.title = @"Packages";
+    self.title = _repository ? _repository.name : @"Packages";
     _exploitRunning = NO;
     
     [self setupTableView];
@@ -107,23 +122,31 @@
 }
 
 - (void)loadPackages {
-    // Load packages from PackageManager
-    PackageManager *manager = [PackageManager sharedManager];
-    
-    // Try to load from Documents/Packages directory
-    NSString *packagesDir = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-    packagesDir = [packagesDir stringByAppendingPathComponent:@"Packages"];
-    
-    NSError *error = nil;
-    NSArray *loadedPackages = [manager loadPackagesFromDirectory:packagesDir error:&error];
-    
-    if (loadedPackages.count > 0) {
-        self.packages = loadedPackages;
-        self.filteredPackages = self.packages;
-        [_tableView reloadData];
+    if (_repository) {
+        // Load packages from specific repository
+        NSError *error = nil;
+        NSArray *repoPackages = [_repoManager packagesFromRepository:_repository error:&error];
+        
+        if (repoPackages) {
+            self.packages = repoPackages;
+            self.filteredPackages = self.packages;
+            [_tableView reloadData];
+        } else {
+            [self showErrorAlert:error];
+        }
     } else {
-        // Load sample packages if no .plumbum files found
-        [self loadSamplePackages];
+        // Load all packages from all repositories
+        NSError *error = nil;
+        NSArray *allPackages = [_repoManager allPackagesFromRepositories:&error];
+        
+        if (allPackages && allPackages.count > 0) {
+            self.packages = allPackages;
+            self.filteredPackages = self.packages;
+            [_tableView reloadData];
+        } else {
+            // Load sample packages if no repo packages found
+            [self loadSamplePackages];
+        }
     }
 }
 
@@ -207,18 +230,24 @@
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Running Exploit"
                                                                    message:@"Please wait while the exploit runs..."
                                                             preferredStyle:UIAlertControllerStyleAlert];
+    
     [self presentViewController:alert animated:YES completion:^{
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            [alert dismissViewControllerAnimated:YES completion:^{
-                UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addPackage)];
-                self.navigationItem.rightBarButtonItem = addButton;
-                UIAlertController *successAlert = [UIAlertController alertControllerWithTitle:@"Exploit Successful"
-                                                                                      message:@"You can now add packages"
-                                                                               preferredStyle:UIAlertControllerStyleAlert];
-                UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
-                [successAlert addAction:action];
-                [self presentViewController:successAlert animated:YES completion:nil];
-            }];
+        dispatch_async(dispatch_get_global_queue(0, 0), ^{
+            kexploit_opa334();
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [alert dismissViewControllerAnimated:YES completion:^{
+                    UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addPackage)];
+                    self.navigationItem.rightBarButtonItem = addButton;
+                    
+                    UIAlertController *successAlert = [UIAlertController alertControllerWithTitle:@"Exploit Successful"
+                                                                                          message:@"You can now add packages"
+                                                                                   preferredStyle:UIAlertControllerStyleAlert];
+                    UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
+                    [successAlert addAction:action];
+                    [self presentViewController:successAlert animated:YES completion:nil];
+                }];
+            });
         });
     }];
 }

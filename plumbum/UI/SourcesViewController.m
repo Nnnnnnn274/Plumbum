@@ -8,6 +8,7 @@
 #import "SourcesViewController.h"
 #import "SileoColors.h"
 #import "../PackageManager/Repository.h"
+#import "PackageListViewController.h"
 #import <QuartzCore/QuartzCore.h>
 
 @interface SourceCell : UITableViewCell
@@ -266,36 +267,9 @@
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     Repository *repo = self.repositories[indexPath.row];
     
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:repo.name
-                                                                   message:repo.repoDescription
-                                                            preferredStyle:UIAlertControllerStyleActionSheet];
-    
-    UIAlertAction *refreshAction = [UIAlertAction actionWithTitle:@"Refresh" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        [self.repoManager refreshRepository:repo completion:^(BOOL success, NSError *error) {
-            if (success) {
-                [self loadRepositories];
-            } else {
-                [self showErrorAlert:error];
-            }
-        }];
-    }];
-    
-    UIAlertAction *removeAction = [UIAlertAction actionWithTitle:@"Remove" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
-        NSError *error = nil;
-        if ([self.repoManager removeRepository:repo error:&error]) {
-            [self loadRepositories];
-        } else {
-            [self showErrorAlert:error];
-        }
-    }];
-    
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil];
-    
-    [alert addAction:refreshAction];
-    [alert addAction:removeAction];
-    [alert addAction:cancelAction];
-    
-    [self presentViewController:alert animated:YES completion:nil];
+    // Open PackageListViewController for this repository
+    PackageListViewController *packageListVC = [[PackageListViewController alloc] initWithRepository:repo];
+    [self.navigationController pushViewController:packageListVC animated:YES];
 }
 
 @end
