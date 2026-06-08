@@ -152,18 +152,21 @@
             self.filteredPackages = self.packages;
             [_tableView reloadData];
         } else {
-            self.packages = @[];
-            self.filteredPackages = @[];
-            [_tableView reloadData];
+            [self showErrorAlert:error];
         }
     } else {
         // Load all packages from all repositories
         NSError *error = nil;
         NSArray *allPackages = [_repoManager allPackagesFromRepositories:&error];
         
-        self.packages = allPackages ?: @[];
-        self.filteredPackages = self.packages;
-        [_tableView reloadData];
+        if (allPackages && allPackages.count > 0) {
+            self.packages = allPackages;
+            self.filteredPackages = self.packages;
+            [_tableView reloadData];
+        } else {
+            // Load sample packages if no repo packages found
+            [self loadSamplePackages];
+        }
     }
 }
 

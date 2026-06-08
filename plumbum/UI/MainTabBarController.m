@@ -10,6 +10,7 @@
 #import "PackageListViewController.h"
 #import "SourcesViewController.h"
 #import "ExploitViewController.h"
+#import "LogsViewController.h"
 #import "SettingsViewController.h"
 
 @interface MainTabBarController ()
@@ -66,6 +67,13 @@
                                                           image:[UIImage systemImageNamed:@"bolt"] 
                                                   selectedImage:[UIImage systemImageNamed:@"bolt.fill"]];
     
+    // Logs tab
+    LogsViewController *logsVC = [[LogsViewController alloc] init];
+    UINavigationController *logsNav = [[UINavigationController alloc] initWithRootViewController:logsVC];
+    logsNav.tabBarItem = [[UITabBarItem alloc] initWithTitle:@"Logs" 
+                                                       image:[UIImage systemImageNamed:@"doc.text"] 
+                                               selectedImage:[UIImage systemImageNamed:@"doc.text.fill"]];
+    
     // Settings tab
     SettingsViewController *settingsVC = [[SettingsViewController alloc] init];
     UINavigationController *settingsNav = [[UINavigationController alloc] initWithRootViewController:settingsVC];
@@ -73,7 +81,7 @@
                                                            image:[UIImage systemImageNamed:@"gear"] 
                                                    selectedImage:[UIImage systemImageNamed:@"gear.fill"]];
     
-    self.viewControllers = @[packagesNav, sourcesNav, exploitNav, settingsNav];
+    self.viewControllers = @[packagesNav, sourcesNav, exploitNav, logsNav, settingsNav];
 }
 
 @end

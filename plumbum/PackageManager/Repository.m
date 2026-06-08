@@ -288,12 +288,11 @@
     NSURL *url = [NSURL URLWithString:packagesURL];
     
     if (!url) {
-        NSLog(@"Invalid packages URL: %@", packagesURL);
-        // If URL construction fails, return empty array (no sample packages)
+        // If URL construction fails, fall back to sample packages
+        NSArray *samplePackages = [self samplePackagesForRepository:repo];
+        [packages addObjectsFromArray:samplePackages];
         return [packages copy];
     }
-    
-    NSLog(@"Downloading packages from: %@", packagesURL);
     
     NSURLSession *session = [NSURLSession sharedSession];
     NSURLSessionDataTask *task = [session dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *networkError) {
@@ -302,18 +301,12 @@
             return;
         }
         
-        NSLog(@"Successfully downloaded packages from %@", packagesURL);
-        
         NSString *packagesContent = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
         NSArray *parsedPackages = [self parsePackagesFile:packagesContent];
-        
-        NSLog(@"Parsed %ld packages from %@", (long)parsedPackages.count, packagesURL);
         
         if (parsedPackages.count > 0) {
             // Auto-port packages that need exploits
             NSArray *autoPortedPackages = [self autoPortPackages:parsedPackages fromRepository:repo];
-            
-            NSLog(@"Auto-ported %ld packages", (long)autoPortedPackages.count);
             
             // Cache the packages
             self->_packagesCache[repo.url] = autoPortedPackages;
@@ -328,15 +321,15 @@
     
     [task resume];
     
-    // Return cached packages if available, otherwise return empty array
+    // Return cached packages if available, otherwise return sample packages
     NSArray *cachedPackages = _packagesCache[repo.url];
     if (cachedPackages && cachedPackages.count > 0) {
-        NSLog(@"Returning %ld cached packages for %@", (long)cachedPackages.count, repo.url);
         return cachedPackages;
     }
     
-    NSLog(@"No cached packages for %@, returning empty array", repo.url);
-    // Return empty array instead of sample packages
+    NSArray *samplePackages = [self samplePackagesForRepository:repo];
+    [packages addObjectsFromArray:samplePackages];
+    
     return [packages copy];
 }
 
