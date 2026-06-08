@@ -18,6 +18,7 @@
 @property (nonatomic, strong) UISearchBar *searchBar;
 @property (nonatomic, strong) NSArray<PlumbumPackage *> *filteredPackages;
 @property (nonatomic, strong) UIRefreshControl *refreshControl;
+@property (nonatomic, assign) BOOL exploitRunning;
 @end
 
 @implementation PackageListViewController
@@ -27,6 +28,7 @@
     
     self.view.backgroundColor = [SileoColors background];
     self.title = @"Packages";
+    _exploitRunning = NO;
     
     [self setupTableView];
     [self setupSearchBar];
@@ -82,8 +84,8 @@
 }
 
 - (void)configureNavigationBar {
-    UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addPackage)];
-    self.navigationItem.rightBarButtonItem = addButton;
+    UIBarButtonItem *runExploitButton = [[UIBarButtonItem alloc] initWithTitle:@"Run Exploit" style:UIBarButtonItemStylePlain target:self action:@selector(runExploit)];
+    self.navigationItem.rightBarButtonItem = runExploitButton;
     
     if (@available(iOS 13.0, *)) {
         UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
@@ -195,6 +197,36 @@
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [_refreshControl endRefreshing];
     });
+}
+
+- (void)runExploit {
+    if (_exploitRunning) {
+        return;
+    }
+    
+    _exploitRunning = YES;
+    
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Running Exploit"
+                                                                   message:@"Please wait while the exploit runs..."
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    
+    [self presentViewController:alert animated:YES completion:^{
+        // Simulate exploit running
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [alert dismissViewControllerAnimated:YES completion:^{
+                // Change button to Add after exploit runs
+                UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addPackage)];
+                self.navigationItem.rightBarButtonItem = addButton;
+                
+                UIAlertController *successAlert = [UIAlertController alertControllerWithTitle:@"Exploit Successful"
+                                                                                      message:@"You can now add packages"
+                                                                               preferredStyle:UIAlertControllerStyleAlert];
+                UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
+                [successAlert addAction:action];
+                [self presentViewController:successAlert animated:YES completion:nil];
+            });
+        });
+    }];
 }
 
 - (void)addPackage {
