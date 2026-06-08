@@ -77,6 +77,31 @@
     _refreshButton.tintColor = [SileoColors sileoBlue];
     _refreshButton.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:_refreshButton];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [_iconImageView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16],
+        [_iconImageView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
+        [_iconImageView.widthAnchor constraintEqualToConstant:50],
+        [_iconImageView.heightAnchor constraintEqualToConstant:50],
+        
+        [_nameLabel.leadingAnchor constraintEqualToAnchor:_iconImageView.trailingAnchor constant:12],
+        [_nameLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12],
+        [_nameLabel.trailingAnchor constraintEqualToAnchor:_refreshButton.leadingAnchor constant:-12],
+        
+        [_urlLabel.leadingAnchor constraintEqualToAnchor:_nameLabel.leadingAnchor],
+        [_urlLabel.topAnchor constraintEqualToAnchor:_nameLabel.bottomAnchor constant:4],
+        [_urlLabel.trailingAnchor constraintEqualToAnchor:_nameLabel.trailingAnchor],
+        
+        [_packageCountLabel.leadingAnchor constraintEqualToAnchor:_nameLabel.leadingAnchor],
+        [_packageCountLabel.topAnchor constraintEqualToAnchor:_urlLabel.bottomAnchor constant:4],
+        [_packageCountLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-12],
+        
+        [_refreshButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16],
+        [_refreshButton.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
+        [_refreshButton.widthAnchor constraintEqualToConstant:30],
+        [_refreshButton.heightAnchor constraintEqualToConstant:30]
+    ]];
+}
 
 - (void)configureWithRepository:(Repository *)repo {
     _iconImageView.image = [UIImage systemImageNamed:@"globe"];
@@ -149,6 +174,7 @@
         self.navigationController.navigationBar.titleTextAttributes = @{NSForegroundColorAttributeName: [SileoColors primaryText]};
     }
 }
+
 - (void)loadRepositories {
     // Add default repositories if none exist
     if (_repoManager.repositories.count == 0) {
@@ -272,5 +298,3 @@
 }
 
 @end
-
-
