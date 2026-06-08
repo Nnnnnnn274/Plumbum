@@ -293,7 +293,7 @@
             @"Description": [NSString stringWithFormat:@"Another package from %@", repo.name],
             @"Version": @"2.0.0",
             @"Author": repo.name,
-            @"Section": @"Tweaks"
+            @"Section": @"Apps"
         }
     ];
     
@@ -312,7 +312,14 @@
         @{
             @"name": @"Misaka",
             @"url": @"https://repo.misaka.app/",
-            @"description": @"Misaka main repository",
+            @"description": @"Official Misaka repository",
+            @"type": @"misaka",
+            @"trusted": @YES
+        },
+        @{
+            @"name": @"Misaka Alt",
+            @"url": @"https://misaka.jailbreaks.app/",
+            @"description": @"Alternative Misaka repository",
             @"type": @"misaka",
             @"trusted": @YES
         },
@@ -320,13 +327,6 @@
             @"name": @"PoomSmart",
             @"url": @"https://poomsmart.github.io/repo/",
             @"description": @"PoomSmart's repository",
-            @"type": @"misaka",
-            @"trusted": @YES
-        },
-        @{
-            @"name": @"Havoc",
-            @"url": @"https://havoc.app/",
-            @"description": @"Havoc repository",
             @"type": @"misaka",
             @"trusted": @YES
         }

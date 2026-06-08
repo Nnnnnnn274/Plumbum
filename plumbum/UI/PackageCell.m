@@ -22,25 +22,39 @@
     self.backgroundColor = [SileoColors cellBackgroundColor];
     self.selectionStyle = UITableViewCellSelectionStyleNone;
     
+    // Add subtle gradient background
+    CAGradientLayer *gradientLayer = [CAGradientLayer layer];
+    gradientLayer.frame = self.bounds;
+    gradientLayer.colors = @[
+        (id)[SileoColors secondaryBackground].CGColor,
+        (id)[SileoColors tertiaryBackground].CGColor
+    ];
+    gradientLayer.startPoint = CGPointMake(0, 0);
+    gradientLayer.endPoint = CGPointMake(1, 1);
+    gradientLayer.cornerRadius = 16;
+    [self.layer insertSublayer:gradientLayer atIndex:0];
+    
     // Icon
     _iconImageView = [[UIImageView alloc] init];
     _iconImageView.contentMode = UIViewContentModeScaleAspectFit;
-    _iconImageView.layer.cornerRadius = 12;
+    _iconImageView.layer.cornerRadius = 14;
     _iconImageView.layer.masksToBounds = YES;
     _iconImageView.backgroundColor = [SileoColors tertiaryBackground];
+    _iconImageView.layer.borderWidth = 1;
+    _iconImageView.layer.borderColor = [SileoColors sileoBlue].CGColor;
     _iconImageView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:_iconImageView];
     
     // Name
     _nameLabel = [[UILabel alloc] init];
-    _nameLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+    _nameLabel.font = [UIFont systemFontOfSize:17 weight:UIFontWeightBold];
     _nameLabel.textColor = [SileoColors primaryText];
     _nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:_nameLabel];
     
     // Description
     _descriptionLabel = [[UILabel alloc] init];
-    _descriptionLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightRegular];
+    _descriptionLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
     _descriptionLabel.textColor = [SileoColors secondaryText];
     _descriptionLabel.numberOfLines = 2;
     _descriptionLabel.translatesAutoresizingMaskIntoConstraints = NO;

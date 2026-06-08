@@ -11,28 +11,28 @@
 
 // Primary colors
 + (UIColor *)sileoBlue {
-    return [UIColor colorWithRed:0.0 green:0.48 blue:1.0 alpha:1.0];
+    return [UIColor colorWithRed:0.0 green:0.8 blue:0.9 alpha:1.0];
 }
 
 + (UIColor *)sileoPurple {
-    return [UIColor colorWithRed:0.5 green:0.0 blue:1.0 alpha:1.0];
+    return [UIColor colorWithRed:0.4 green:0.6 blue:0.9 alpha:1.0];
 }
 
 + (UIColor *)sileoGreen {
-    return [UIColor colorWithRed:0.2 green:0.8 blue:0.4 alpha:1.0];
+    return [UIColor colorWithRed:0.0 green:0.9 blue:0.7 alpha:1.0];
 }
 
 // Background colors
 + (UIColor *)background {
-    return [UIColor colorWithRed:0.05 green:0.05 blue:0.1 alpha:1.0];
+    return [UIColor colorWithRed:0.02 green:0.02 blue:0.05 alpha:1.0];
 }
 
 + (UIColor *)secondaryBackground {
-    return [UIColor colorWithRed:0.1 green:0.1 blue:0.15 alpha:1.0];
+    return [UIColor colorWithRed:0.08 green:0.08 blue:0.12 alpha:1.0];
 }
 
 + (UIColor *)tertiaryBackground {
-    return [UIColor colorWithRed:0.15 green:0.15 blue:0.2 alpha:1.0];
+    return [UIColor colorWithRed:0.12 green:0.12 blue:0.18 alpha:1.0];
 }
 
 // Text colors

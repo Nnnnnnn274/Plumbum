@@ -32,28 +32,42 @@
     self.backgroundColor = [SileoColors cellBackgroundColor];
     self.selectionStyle = UITableViewCellSelectionStyleNone;
     
+    // Add subtle gradient background
+    CAGradientLayer *gradientLayer = [CAGradientLayer layer];
+    gradientLayer.frame = self.bounds;
+    gradientLayer.colors = @[
+        (id)[SileoColors secondaryBackground].CGColor,
+        (id)[SileoColors tertiaryBackground].CGColor
+    ];
+    gradientLayer.startPoint = CGPointMake(0, 0);
+    gradientLayer.endPoint = CGPointMake(1, 1);
+    gradientLayer.cornerRadius = 16;
+    [self.layer insertSublayer:gradientLayer atIndex:0];
+    
     _iconImageView = [[UIImageView alloc] init];
     _iconImageView.contentMode = UIViewContentModeScaleAspectFit;
-    _iconImageView.layer.cornerRadius = 10;
+    _iconImageView.layer.cornerRadius = 12;
     _iconImageView.layer.masksToBounds = YES;
     _iconImageView.backgroundColor = [SileoColors tertiaryBackground];
+    _iconImageView.layer.borderWidth = 1;
+    _iconImageView.layer.borderColor = [SileoColors sileoBlue].CGColor;
     _iconImageView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:_iconImageView];
     
     _nameLabel = [[UILabel alloc] init];
-    _nameLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+    _nameLabel.font = [UIFont systemFontOfSize:17 weight:UIFontWeightBold];
     _nameLabel.textColor = [SileoColors primaryText];
     _nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:_nameLabel];
     
     _urlLabel = [[UILabel alloc] init];
-    _urlLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightRegular];
+    _urlLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
     _urlLabel.textColor = [SileoColors tertiaryText];
     _urlLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:_urlLabel];
     
     _packageCountLabel = [[UILabel alloc] init];
-    _packageCountLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
+    _packageCountLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold];
     _packageCountLabel.textColor = [SileoColors sileoBlue];
     _packageCountLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:_packageCountLabel];
@@ -63,31 +77,6 @@
     _refreshButton.tintColor = [SileoColors sileoBlue];
     _refreshButton.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:_refreshButton];
-    
-    [NSLayoutConstraint activateConstraints:@[
-        [_iconImageView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16],
-        [_iconImageView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
-        [_iconImageView.widthAnchor constraintEqualToConstant:50],
-        [_iconImageView.heightAnchor constraintEqualToConstant:50],
-        
-        [_nameLabel.leadingAnchor constraintEqualToAnchor:_iconImageView.trailingAnchor constant:12],
-        [_nameLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12],
-        [_nameLabel.trailingAnchor constraintEqualToAnchor:_refreshButton.leadingAnchor constant:-12],
-        
-        [_urlLabel.leadingAnchor constraintEqualToAnchor:_nameLabel.leadingAnchor],
-        [_urlLabel.topAnchor constraintEqualToAnchor:_nameLabel.bottomAnchor constant:4],
-        [_urlLabel.trailingAnchor constraintEqualToAnchor:_nameLabel.trailingAnchor],
-        
-        [_packageCountLabel.leadingAnchor constraintEqualToAnchor:_nameLabel.leadingAnchor],
-        [_packageCountLabel.topAnchor constraintEqualToAnchor:_urlLabel.bottomAnchor constant:4],
-        [_packageCountLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-12],
-        
-        [_refreshButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16],
-        [_refreshButton.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
-        [_refreshButton.widthAnchor constraintEqualToConstant:30],
-        [_refreshButton.heightAnchor constraintEqualToConstant:30]
-    ]];
-}
 
 - (void)configureWithRepository:(Repository *)repo {
     _iconImageView.image = [UIImage systemImageNamed:@"globe"];
@@ -283,4 +272,5 @@
 }
 
 @end
+
 

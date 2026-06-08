@@ -133,7 +133,7 @@
             @"Description": @"Powerful SpringBoard customization with many features",
             @"Version": @"2.1.0",
             @"Author": @"CoolDev",
-            @"Section": @"Tweaks"
+            @"Section": @"Apps"
         },
         @{
             @"Package": @"com.example.noctis12",
@@ -165,7 +165,7 @@
             @"Description": @"Enhance Safari with new features",
             @"Version": @"1.5.0",
             @"Author": @"CP Digital Darkroom",
-            @"Section": @"Tweaks"
+            @"Section": @"Apps"
         }
     ];
     
