@@ -195,7 +195,7 @@
 - (void)refreshPackages {
     [self loadPackages];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [_refreshControl endRefreshing];
+        [self->_refreshControl endRefreshing];
     });
 }
 
@@ -203,6 +203,25 @@
     if (_exploitRunning) {
         return;
     }
+    _exploitRunning = YES;
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Running Exploit"
+                                                                   message:@"Please wait while the exploit runs..."
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    [self presentViewController:alert animated:YES completion:^{
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [alert dismissViewControllerAnimated:YES completion:^{
+                UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addPackage)];
+                self.navigationItem.rightBarButtonItem = addButton;
+                UIAlertController *successAlert = [UIAlertController alertControllerWithTitle:@"Exploit Successful"
+                                                                                      message:@"You can now add packages"
+                                                                               preferredStyle:UIAlertControllerStyleAlert];
+                UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
+                [successAlert addAction:action];
+                [self presentViewController:successAlert animated:YES completion:nil];
+            }];
+        });
+    }];
+}
     
     _exploitRunning = YES;
     
@@ -211,10 +230,8 @@
                                                             preferredStyle:UIAlertControllerStyleAlert];
     
     [self presentViewController:alert animated:YES completion:^{
-        // Simulate exploit running
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             [alert dismissViewControllerAnimated:YES completion:^{
-                // Change button to Add after exploit runs
                 UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addPackage)];
                 self.navigationItem.rightBarButtonItem = addButton;
                 
@@ -224,7 +241,7 @@
                 UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
                 [successAlert addAction:action];
                 [self presentViewController:successAlert animated:YES completion:nil];
-            });
+            }];
         });
     }];
 }
@@ -276,7 +293,6 @@
     // Start accessing security-scoped resource
     [url startAccessingSecurityScopedResource];
     
-    PackageManager *manager = [PackageManager sharedManager];
     NSError *error = nil;
     
     // Copy to Documents/Packages directory
@@ -360,3 +376,4 @@
 }
 
 @end
+
