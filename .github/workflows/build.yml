@@ -119,13 +119,21 @@ jobs:
     - name: Create IPA manually if needed
       id: create_ipa
       run: |
+        echo "Checking for existing IPA..."
         if [ ! -f "build/plumbum.ipa" ]; then
+          echo "IPA not found, creating manually from archive..."
+          echo "Archive contents:"
+          ls -la build/plumbum.xcarchive/Products/Applications/ || echo "Applications directory not found"
+          
           APP_PATH="$(find build/plumbum.xcarchive/Products/Applications -maxdepth 1 -name '*.app' -print -quit)"
+          echo "Found app bundle: $APP_PATH"
 
           if [ -z "$APP_PATH" ]; then
             echo "Manual IPA creation failed!"
             echo "Reason: Could not find an .app bundle inside build/plumbum.xcarchive."
             echo "Solution: Check whether the archive step produced Products/Applications/*.app."
+            echo "Full archive structure:"
+            find build/plumbum.xcarchive -type f -name "*.app" || echo "No .app files found"
             exit 1
           fi
 
@@ -144,6 +152,9 @@ jobs:
             exit 1
           }
           cd ..
+          echo "IPA created successfully at build/plumbum.ipa"
+        else
+          echo "IPA already exists at build/plumbum.ipa"
         fi
 
     - name: Why manual IPA creation failed
