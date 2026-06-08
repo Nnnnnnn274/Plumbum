@@ -8,6 +8,7 @@
 #import "SourcesViewController.h"
 #import "SileoColors.h"
 #import "../PackageManager/Repository.h"
+#import <QuartzCore/QuartzCore.h>
 
 @interface SourceCell : UITableViewCell
 @property (nonatomic, strong) UIImageView *iconImageView;

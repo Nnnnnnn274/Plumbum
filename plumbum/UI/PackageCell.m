@@ -7,6 +7,7 @@
 
 #import "PackageCell.h"
 #import "SileoColors.h"
+#import <QuartzCore/QuartzCore.h>
 
 @implementation PackageCell
 
