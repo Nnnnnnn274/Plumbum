@@ -103,15 +103,7 @@ jobs:
           -exportOptionsPlist exportOptions.plist \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
-          CODE_SIGNING_ALLOWED=NO || {
-          echo "Export failed!"
-          echo "Reason: xcodebuild exportArchive command failed"
-          echo "Possible causes:"
-          echo "  - Archive file is corrupted or incomplete"
-          echo "  - exportOptions.plist is missing or invalid"
-          echo "  - Export method is not supported"
-          echo "Solution: Falling back to manual IPA packaging from the archive."
-        }
+          CODE_SIGNING_ALLOWED=NO || true
 
     - name: Why IPA export failed
       if: ${{ failure() && steps.export_ipa.outcome == 'failure' }}
