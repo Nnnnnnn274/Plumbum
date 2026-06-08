@@ -310,38 +310,24 @@
 - (void)addDefaultRepositories {
     NSArray *defaultRepos = @[
         @{
-            @"name": @"BigBoss",
-            @"url": @"http://apt.thebigboss.org/repofiles/cydia/",
-            @"description": @"The original Cydia repository",
-            @"type": @"standard",
+            @"name": @"Misaka",
+            @"url": @"https://repo.misaka.app/",
+            @"description": @"Misaka main repository",
+            @"type": @"misaka",
             @"trusted": @YES
         },
         @{
-            @"name": @"ModMyi",
-            @"url": @"http://apt.modmyi.com/",
-            @"description": @"ModMyi repository",
-            @"type": @"standard",
+            @"name": @"PoomSmart",
+            @"url": @"https://poomsmart.github.io/repo/",
+            @"description": @"PoomSmart's repository",
+            @"type": @"misaka",
             @"trusted": @YES
         },
         @{
-            @"name": @"Hashbang",
-            @"url": @"https://apt.bingner.com/",
-            @"description": @"Hashbang's repository",
-            @"type": @"standard",
-            @"trusted": @YES
-        },
-        @{
-            @"name": @"SparkDev",
-            @"url": @"https://sparkdev.me/",
-            @"description": @"SparkDev's repository",
-            @"type": @"native",
-            @"trusted": @YES
-        },
-        @{
-            @"name": @"Chariz",
-            @"url": @"https://repo.chariz.com/",
-            @"description": @"Chariz repository",
-            @"type": @"standard",
+            @"name": @"Havoc",
+            @"url": @"https://havoc.app/",
+            @"description": @"Havoc repository",
+            @"type": @"misaka",
             @"trusted": @YES
         }
     ];

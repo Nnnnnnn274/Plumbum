@@ -11,6 +11,8 @@
 #import "../PackageManager/PackageManager.h"
 #import "../PackageManager/Repository.h"
 
+@import UniformTypeIdentifiers;
+
 @interface PackageListViewController ()
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) UISearchBar *searchBar;
@@ -80,6 +82,9 @@
 }
 
 - (void)configureNavigationBar {
+    UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addPackage)];
+    self.navigationItem.rightBarButtonItem = addButton;
+    
     if (@available(iOS 13.0, *)) {
         UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
         [appearance configureWithOpaqueBackground];
@@ -190,6 +195,95 @@
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [_refreshControl endRefreshing];
     });
+}
+
+- (void)addPackage {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Add Package"
+                                                                   message:@"Select package type"
+                                                            preferredStyle:UIAlertControllerStyleActionSheet];
+    
+    UIAlertAction *plumbumAction = [UIAlertAction actionWithTitle:@"Add .plumbum file" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        [self showFilePickerForType:@"plumbum"];
+    }];
+    
+    UIAlertAction *misakaAction = [UIAlertAction actionWithTitle:@"Add .misaka file" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        [self showFilePickerForType:@"misaka"];
+    }];
+    
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil];
+    
+    [alert addAction:plumbumAction];
+    [alert addAction:misakaAction];
+    [alert addAction:cancelAction];
+    
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)showFilePickerForType:(NSString *)type {
+    if (@available(iOS 14.0, *)) {
+        UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[[UTType typeWithFilenameExtension:type]]];
+        picker.delegate = self;
+        picker.allowsMultipleSelection = NO;
+        [self presentViewController:picker animated:YES completion:nil];
+    } else {
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Not Supported"
+                                                                       message:@"File picker requires iOS 14.0 or later"
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
+        [alert addAction:action];
+        [self presentViewController:alert animated:YES completion:nil];
+    }
+}
+
+#pragma mark - UIDocumentPickerDelegate
+
+- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
+    NSURL *url = urls.firstObject;
+    if (!url) return;
+    
+    // Start accessing security-scoped resource
+    [url startAccessingSecurityScopedResource];
+    
+    PackageManager *manager = [PackageManager sharedManager];
+    NSError *error = nil;
+    
+    // Copy to Documents/Packages directory
+    NSString *documentsDir = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+    NSString *packagesDir = [documentsDir stringByAppendingPathComponent:@"Packages"];
+    
+    NSFileManager *fm = [NSFileManager defaultManager];
+    if (![fm fileExistsAtPath:packagesDir]) {
+        [fm createDirectoryAtPath:packagesDir withIntermediateDirectories:YES attributes:nil error:nil];
+    }
+    
+    NSString *destinationPath = [packagesDir stringByAppendingPathComponent:url.lastPathComponent];
+    
+    if ([fm fileExistsAtPath:destinationPath]) {
+        [fm removeItemAtPath:destinationPath error:nil];
+    }
+    
+    [fm copyItemAtPath:url.path toPath:destinationPath error:&error];
+    
+    [url stopAccessingSecurityScopedResource];
+    
+    if (error) {
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Error"
+                                                                       message:error.localizedDescription
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
+        [alert addAction:action];
+        [self presentViewController:alert animated:YES completion:nil];
+    } else {
+        // Reload packages
+        [self loadPackages];
+        
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Success"
+                                                                       message:@"Package added successfully"
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
+        [alert addAction:action];
+        [self presentViewController:alert animated:YES completion:nil];
+    }
 }
 
 #pragma mark - UITableViewDataSource

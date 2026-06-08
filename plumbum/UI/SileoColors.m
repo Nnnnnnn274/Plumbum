@@ -24,15 +24,15 @@
 
 // Background colors
 + (UIColor *)background {
-    return [UIColor colorWithRed:0.07 green:0.07 blue:0.07 alpha:1.0];
+    return [UIColor colorWithRed:0.05 green:0.05 blue:0.1 alpha:1.0];
 }
 
 + (UIColor *)secondaryBackground {
-    return [UIColor colorWithRed:0.12 green:0.12 blue:0.12 alpha:1.0];
+    return [UIColor colorWithRed:0.1 green:0.1 blue:0.15 alpha:1.0];
 }
 
 + (UIColor *)tertiaryBackground {
-    return [UIColor colorWithRed:0.18 green:0.18 blue:0.18 alpha:1.0];
+    return [UIColor colorWithRed:0.15 green:0.15 blue:0.2 alpha:1.0];
 }
 
 // Text colors

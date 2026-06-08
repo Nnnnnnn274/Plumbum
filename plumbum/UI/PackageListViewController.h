@@ -10,7 +10,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface PackageListViewController : UIViewController <UITableViewDataSource, UITableViewDelegate, UISearchBarDelegate>
+@interface PackageListViewController : UIViewController <UITableViewDataSource, UITableViewDelegate, UISearchBarDelegate, UIDocumentPickerDelegate>
 
 @property (nonatomic, strong) NSString *section;
 @property (nonatomic, strong) NSArray<PlumbumPackage *> *packages;
