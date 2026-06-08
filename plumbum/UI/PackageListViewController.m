@@ -222,29 +222,6 @@
         });
     }];
 }
-    
-    _exploitRunning = YES;
-    
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Running Exploit"
-                                                                   message:@"Please wait while the exploit runs..."
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    
-    [self presentViewController:alert animated:YES completion:^{
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            [alert dismissViewControllerAnimated:YES completion:^{
-                UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addPackage)];
-                self.navigationItem.rightBarButtonItem = addButton;
-                
-                UIAlertController *successAlert = [UIAlertController alertControllerWithTitle:@"Exploit Successful"
-                                                                                      message:@"You can now add packages"
-                                                                               preferredStyle:UIAlertControllerStyleAlert];
-                UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
-                [successAlert addAction:action];
-                [self presentViewController:successAlert animated:YES completion:nil];
-            }];
-        });
-    }];
-}
 
 - (void)addPackage {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Add Package"
