@@ -288,9 +288,12 @@
     NSURL *url = [NSURL URLWithString:packagesURL];
     
     if (!url) {
+        NSLog(@"Invalid packages URL: %@", packagesURL);
         // If URL construction fails, return empty array (no sample packages)
         return [packages copy];
     }
+    
+    NSLog(@"Downloading packages from: %@", packagesURL);
     
     NSURLSession *session = [NSURLSession sharedSession];
     NSURLSessionDataTask *task = [session dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *networkError) {
@@ -299,12 +302,18 @@
             return;
         }
         
+        NSLog(@"Successfully downloaded packages from %@", packagesURL);
+        
         NSString *packagesContent = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
         NSArray *parsedPackages = [self parsePackagesFile:packagesContent];
+        
+        NSLog(@"Parsed %ld packages from %@", (long)parsedPackages.count, packagesURL);
         
         if (parsedPackages.count > 0) {
             // Auto-port packages that need exploits
             NSArray *autoPortedPackages = [self autoPortPackages:parsedPackages fromRepository:repo];
+            
+            NSLog(@"Auto-ported %ld packages", (long)autoPortedPackages.count);
             
             // Cache the packages
             self->_packagesCache[repo.url] = autoPortedPackages;
@@ -322,9 +331,11 @@
     // Return cached packages if available, otherwise return empty array
     NSArray *cachedPackages = _packagesCache[repo.url];
     if (cachedPackages && cachedPackages.count > 0) {
+        NSLog(@"Returning %ld cached packages for %@", (long)cachedPackages.count, repo.url);
         return cachedPackages;
     }
     
+    NSLog(@"No cached packages for %@, returning empty array", repo.url);
     // Return empty array instead of sample packages
     return [packages copy];
 }
@@ -373,45 +384,55 @@
 
 - (NSArray *)parsePackagesFile:(NSString *)content {
     NSMutableArray *packages = [NSMutableArray array];
+    
+    if (!content || content.length == 0) {
+        NSLog(@"Empty content for Packages file");
+        return [packages copy];
+    }
+    
     NSArray *blocks = [content componentsSeparatedByString:@"\n\n"];
     
     for (NSString *block in blocks) {
         if (block.length == 0) continue;
         
-        NSMutableDictionary *packageDict = [NSMutableDictionary dictionary];
-        NSArray *lines = [block componentsSeparatedByString:@"\n"];
-        NSString *currentKey = nil;
-        NSMutableString *currentValue = [NSMutableString string];
-        
-        for (NSString *line in lines) {
-            if (line.length == 0) continue;
+        @autoreleasepool {
+            NSMutableDictionary *packageDict = [NSMutableDictionary dictionary];
+            NSArray *lines = [block componentsSeparatedByString:@"\n"];
+            NSString *currentKey = nil;
+            NSMutableString *currentValue = [NSMutableString string];
             
-            if ([line hasPrefix:@" "] || [line hasPrefix:@"\t"]) {
-                // Continuation of previous value
-                [currentValue appendString:[line substringFromIndex:1]];
-            } else {
-                // New key-value pair
-                if (currentKey) {
-                    packageDict[currentKey] = [currentValue stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-                }
+            for (NSString *line in lines) {
+                if (line.length == 0) continue;
                 
-                NSRange colonRange = [line rangeOfString:@":"];
-                if (colonRange.location != NSNotFound) {
-                    currentKey = [line substringToIndex:colonRange.location];
-                    NSString *value = [line substringFromIndex:colonRange.location + 1];
-                    currentValue = [NSMutableString stringWithString:value];
+                if ([line hasPrefix:@" "] || [line hasPrefix:@"\t"]) {
+                    // Continuation of previous value
+                    [currentValue appendString:[line substringFromIndex:1]];
+                } else {
+                    // New key-value pair
+                    if (currentKey) {
+                        packageDict[currentKey] = [currentValue stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+                    }
+                    
+                    NSRange colonRange = [line rangeOfString:@":"];
+                    if (colonRange.location != NSNotFound) {
+                        currentKey = [line substringToIndex:colonRange.location];
+                        NSString *value = [line substringFromIndex:colonRange.location + 1];
+                        currentValue = [NSMutableString stringWithString:value];
+                    }
                 }
             }
-        }
-        
-        // Add last key-value pair
-        if (currentKey) {
-            packageDict[currentKey] = [currentValue stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-        }
-        
-        if (packageDict.count > 0) {
-            PlumbumPackage *package = [[PlumbumPackage alloc] initWithDictionary:packageDict];
-            [packages addObject:package];
+            
+            // Add last key-value pair
+            if (currentKey) {
+                packageDict[currentKey] = [currentValue stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+            }
+            
+            if (packageDict.count > 0) {
+                PlumbumPackage *package = [[PlumbumPackage alloc] initWithDictionary:packageDict];
+                if (package) {
+                    [packages addObject:package];
+                }
+            }
         }
     }
     
@@ -422,19 +443,25 @@
     NSMutableArray *autoPortedPackages = [NSMutableArray array];
     
     for (PlumbumPackage *package in packages) {
+        if (!package) continue;
+        
         // Check if package needs exploit (based on repository type or package metadata)
         BOOL needsExploit = [self packageNeedsExploit:package fromRepository:repo];
         
         if (needsExploit) {
             // Auto-port the package by marking it as auto-ported
-            NSMutableDictionary *packageDict = [[package toDictionary] mutableCopy];
-            packageDict[@"Auto-Ported"] = @YES;
-            packageDict[@"Original-Repository"] = repo.name;
-            
-            PlumbumPackage *portedPackage = [[PlumbumPackage alloc] initWithDictionary:packageDict];
-            [autoPortedPackages addObject:portedPackage];
-            
-            NSLog(@"Auto-ported package: %@", package.packageID);
+            NSDictionary *packageDict = [package toDictionary];
+            if (packageDict) {
+                NSMutableDictionary *mutableDict = [packageDict mutableCopy];
+                mutableDict[@"Auto-Ported"] = @YES;
+                mutableDict[@"Original-Repository"] = repo.name;
+                
+                PlumbumPackage *portedPackage = [[PlumbumPackage alloc] initWithDictionary:mutableDict];
+                if (portedPackage) {
+                    [autoPortedPackages addObject:portedPackage];
+                    NSLog(@"Auto-ported package: %@", package.packageID);
+                }
+            }
         } else {
             // Package doesn't need exploit, add as-is
             [autoPortedPackages addObject:package];

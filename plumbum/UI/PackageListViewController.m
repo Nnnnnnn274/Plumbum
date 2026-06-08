@@ -62,11 +62,13 @@
 
 - (void)packagesUpdated:(NSNotification *)notification {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [self loadPackages];
-        
-        // Show alert if packages were loaded
-        if (self.packages.count > 0) {
-            NSLog(@"Loaded %ld packages from repositories", (long)self.packages.count);
+        if (self && self.tableView) {
+            [self loadPackages];
+            
+            // Show alert if packages were loaded
+            if (self.packages.count > 0) {
+                NSLog(@"Loaded %ld packages from repositories", (long)self.packages.count);
+            }
         }
     });
 }
@@ -150,7 +152,9 @@
             self.filteredPackages = self.packages;
             [_tableView reloadData];
         } else {
-            [self showErrorAlert:error];
+            self.packages = @[];
+            self.filteredPackages = @[];
+            [_tableView reloadData];
         }
     } else {
         // Load all packages from all repositories
