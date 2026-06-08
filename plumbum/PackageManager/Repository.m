@@ -86,6 +86,7 @@
 @property (nonatomic, strong) NSMutableArray<Repository *> *repositoriesCache;
 @property (nonatomic, strong) NSString *databasePath;
 @property (nonatomic, strong) NSString *packagesCachePath;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSArray<PlumbumPackage *> *> *packagesCache;
 @end
 
 @implementation RepositoryManager
@@ -105,8 +106,10 @@
         NSString *documentsDir = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
         _databasePath = [documentsDir stringByAppendingPathComponent:@"repositories.plist"];
         _packagesCachePath = [documentsDir stringByAppendingPathComponent:@"cached_packages.plist"];
+        _packagesCache = [NSMutableDictionary dictionary];
         
         [self loadRepositories];
+        [self loadCachedPackages];
     }
     return self;
 }
@@ -122,6 +125,35 @@
             [_repositoriesCache addObject:repo];
         }
     }
+}
+
+- (void)loadCachedPackages {
+    NSFileManager *fm = [NSFileManager defaultManager];
+    if ([fm fileExistsAtPath:_packagesCachePath]) {
+        NSDictionary *cachedData = [NSDictionary dictionaryWithContentsOfFile:_packagesCachePath];
+        for (NSString *repoURL in cachedData) {
+            NSArray *packageDicts = cachedData[repoURL];
+            NSMutableArray *packages = [NSMutableArray array];
+            for (NSDictionary *dict in packageDicts) {
+                PlumbumPackage *package = [[PlumbumPackage alloc] initWithDictionary:dict];
+                [packages addObject:package];
+            }
+            _packagesCache[repoURL] = [packages copy];
+        }
+    }
+}
+
+- (void)saveCachedPackages {
+    NSMutableDictionary *cacheData = [NSMutableDictionary dictionary];
+    for (NSString *repoURL in _packagesCache) {
+        NSArray *packages = _packagesCache[repoURL];
+        NSMutableArray *packageDicts = [NSMutableArray array];
+        for (PlumbumPackage *package in packages) {
+            [packageDicts addObject:[package toDictionary]];
+        }
+        cacheData[repoURL] = packageDicts;
+    }
+    [cacheData writeToFile:_packagesCachePath atomically:YES];
 }
 
 - (void)saveRepositories {
@@ -251,15 +283,49 @@
 - (NSArray<PlumbumPackage *> *)packagesFromRepository:(Repository *)repo error:(NSError **)error {
     NSMutableArray *packages = [NSMutableArray array];
     
-    // In a real implementation, you would:
-    // 1. Download the Packages file from the repository
-    // 2. Parse the Packages file (it's in a specific format)
-    // 3. Create PlumbumPackage objects for each entry
+    // Download the Packages file from the repository
+    NSString *packagesURL = [repo packagesURL];
+    NSURL *url = [NSURL URLWithString:packagesURL];
     
-    // For demo purposes, return sample packages
-    NSArray *samplePackages = [self samplePackagesForRepository:repo];
-    [packages addObjectsFromArray:samplePackages];
+    if (!url) {
+        // If URL construction fails, return empty array (no sample packages)
+        return [packages copy];
+    }
     
+    NSURLSession *session = [NSURLSession sharedSession];
+    NSURLSessionDataTask *task = [session dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *networkError) {
+        if (networkError || !data) {
+            NSLog(@"Failed to download Packages from %@: %@", packagesURL, networkError.localizedDescription);
+            return;
+        }
+        
+        NSString *packagesContent = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+        NSArray *parsedPackages = [self parsePackagesFile:packagesContent];
+        
+        if (parsedPackages.count > 0) {
+            // Auto-port packages that need exploits
+            NSArray *autoPortedPackages = [self autoPortPackages:parsedPackages fromRepository:repo];
+            
+            // Cache the packages
+            self->_packagesCache[repo.url] = autoPortedPackages;
+            [self saveCachedPackages];
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                // Notify that packages are updated
+                [[NSNotificationCenter defaultCenter] postNotificationName:@"PackagesUpdated" object:nil];
+            });
+        }
+    }];
+    
+    [task resume];
+    
+    // Return cached packages if available, otherwise return empty array
+    NSArray *cachedPackages = _packagesCache[repo.url];
+    if (cachedPackages && cachedPackages.count > 0) {
+        return cachedPackages;
+    }
+    
+    // Return empty array instead of sample packages
     return [packages copy];
 }
 
@@ -305,6 +371,112 @@
     return packages;
 }
 
+- (NSArray *)parsePackagesFile:(NSString *)content {
+    NSMutableArray *packages = [NSMutableArray array];
+    NSArray *blocks = [content componentsSeparatedByString:@"\n\n"];
+    
+    for (NSString *block in blocks) {
+        if (block.length == 0) continue;
+        
+        NSMutableDictionary *packageDict = [NSMutableDictionary dictionary];
+        NSArray *lines = [block componentsSeparatedByString:@"\n"];
+        NSString *currentKey = nil;
+        NSMutableString *currentValue = [NSMutableString string];
+        
+        for (NSString *line in lines) {
+            if (line.length == 0) continue;
+            
+            if ([line hasPrefix:@" "] || [line hasPrefix:@"\t"]) {
+                // Continuation of previous value
+                [currentValue appendString:[line substringFromIndex:1]];
+            } else {
+                // New key-value pair
+                if (currentKey) {
+                    packageDict[currentKey] = [currentValue stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+                }
+                
+                NSRange colonRange = [line rangeOfString:@":"];
+                if (colonRange.location != NSNotFound) {
+                    currentKey = [line substringToIndex:colonRange.location];
+                    NSString *value = [line substringFromIndex:colonRange.location + 1];
+                    currentValue = [NSMutableString stringWithString:value];
+                }
+            }
+        }
+        
+        // Add last key-value pair
+        if (currentKey) {
+            packageDict[currentKey] = [currentValue stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        }
+        
+        if (packageDict.count > 0) {
+            PlumbumPackage *package = [[PlumbumPackage alloc] initWithDictionary:packageDict];
+            [packages addObject:package];
+        }
+    }
+    
+    return [packages copy];
+}
+
+- (NSArray *)autoPortPackages:(NSArray *)packages fromRepository:(Repository *)repo {
+    NSMutableArray *autoPortedPackages = [NSMutableArray array];
+    
+    for (PlumbumPackage *package in packages) {
+        // Check if package needs exploit (based on repository type or package metadata)
+        BOOL needsExploit = [self packageNeedsExploit:package fromRepository:repo];
+        
+        if (needsExploit) {
+            // Auto-port the package by marking it as auto-ported
+            NSMutableDictionary *packageDict = [[package toDictionary] mutableCopy];
+            packageDict[@"Auto-Ported"] = @YES;
+            packageDict[@"Original-Repository"] = repo.name;
+            
+            PlumbumPackage *portedPackage = [[PlumbumPackage alloc] initWithDictionary:packageDict];
+            [autoPortedPackages addObject:portedPackage];
+            
+            NSLog(@"Auto-ported package: %@", package.packageID);
+        } else {
+            // Package doesn't need exploit, add as-is
+            [autoPortedPackages addObject:package];
+        }
+    }
+    
+    return [autoPortedPackages copy];
+}
+
+- (BOOL)packageNeedsExploit:(PlumbumPackage *)package fromRepository:(Repository *)repo {
+    // Determine if a package needs an exploit based on:
+    // 1. Repository type (misaka repos typically have packages that need exploits)
+    // 2. Package metadata (if available)
+    // 3. Package dependencies
+    
+    // Misaka repositories typically have packages that need exploits
+    if ([repo.name containsString:@"Misaka"] || 
+        [repo.repoDescription containsString:@"misaka"] ||
+        [repo.url containsString:@"misaka"]) {
+        return YES;
+    }
+    
+    // Check package description for exploit-related keywords
+    NSString *description = package.packageDescription.lowercaseString;
+    if ([description containsString:@"exploit"] || 
+        [description containsString:@"kern"] || 
+        [description containsString:@"kernel"] ||
+        [description containsString:@"rootless"]) {
+        return YES;
+    }
+    
+    // Check package section
+    NSString *section = package.section.lowercaseString;
+    if ([section containsString:@"system"] || 
+        [section containsString:@"kernel"] ||
+        [section containsString:@"tweaks"]) {
+        return YES;
+    }
+    
+    return NO;
+}
+
 #pragma mark - Default Repositories
 
 - (void)addDefaultRepositories {
@@ -313,21 +485,21 @@
             @"name": @"Misaka",
             @"url": @"https://repo.misaka.app/",
             @"description": @"Official Misaka repository",
-            @"type": @"misaka",
+            @"type": @"standard",
             @"trusted": @YES
         },
         @{
             @"name": @"Misaka Alt",
             @"url": @"https://misaka.jailbreaks.app/",
             @"description": @"Alternative Misaka repository",
-            @"type": @"misaka",
+            @"type": @"standard",
             @"trusted": @YES
         },
         @{
             @"name": @"PoomSmart",
             @"url": @"https://poomsmart.github.io/repo/",
             @"description": @"PoomSmart's repository",
-            @"type": @"misaka",
+            @"type": @"standard",
             @"trusted": @YES
         }
     ];
@@ -340,6 +512,10 @@
             [self addRepository:repo error:nil];
         }
     }
+    
+    // Clear package cache to force re-fetching with auto-porting
+    [_packagesCache removeAllObjects];
+    [self saveCachedPackages];
 }
 
 @end

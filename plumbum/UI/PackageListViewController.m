@@ -51,6 +51,24 @@
     
     // Configure navigation bar
     [self configureNavigationBar];
+    
+    // Listen for package updates from repositories
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(packagesUpdated:) name:@"PackagesUpdated" object:nil];
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)packagesUpdated:(NSNotification *)notification {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self loadPackages];
+        
+        // Show alert if packages were loaded
+        if (self.packages.count > 0) {
+            NSLog(@"Loaded %ld packages from repositories", (long)self.packages.count);
+        }
+    });
 }
 
 - (void)setupTableView {
@@ -139,14 +157,9 @@
         NSError *error = nil;
         NSArray *allPackages = [_repoManager allPackagesFromRepositories:&error];
         
-        if (allPackages && allPackages.count > 0) {
-            self.packages = allPackages;
-            self.filteredPackages = self.packages;
-            [_tableView reloadData];
-        } else {
-            // Load sample packages if no repo packages found
-            [self loadSamplePackages];
-        }
+        self.packages = allPackages ?: @[];
+        self.filteredPackages = self.packages;
+        [_tableView reloadData];
     }
 }
 
