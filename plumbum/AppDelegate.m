@@ -6,11 +6,11 @@
 //
 
 #import "AppDelegate.h"
-#import "../kexploit/kexploit_opa334.h"
-#import "../utils/sandbox.h"
-#import "../research/sandbox_research.h"
-#import "../utils/process.h"
-#import "../TaskRop/RemoteCall.h"
+#import "kexploit/kexploit_opa334.h"
+#import "utils/sandbox.h"
+#import "research/sandbox_research.h"
+#import "utils/process.h"
+#import "TaskRop/RemoteCall.h"
 #import "LogTextView.h"
 
 @interface AppDelegate ()
