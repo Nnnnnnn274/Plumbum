@@ -107,9 +107,10 @@
         _databasePath = [documentsDir stringByAppendingPathComponent:@"repositories.plist"];
         _packagesCachePath = [documentsDir stringByAppendingPathComponent:@"cached_packages.plist"];
         _packagesCache = [NSMutableDictionary dictionary];
+        _repositoriesCache = [NSMutableArray array];
         
-        [self loadRepositories];
-        [self loadCachedPackages];
+        // Don't load repositories/cached packages in init to prevent panics before exploit
+        // They will be loaded on first access
     }
     return self;
 }
@@ -216,6 +217,10 @@
 }
 
 - (NSArray<Repository *> *)repositories {
+    // Lazy load repositories on first access
+    if (_repositoriesCache.count == 0) {
+        [self loadRepositories];
+    }
     return [_repositoriesCache copy];
 }
 
@@ -282,6 +287,11 @@
 
 - (NSArray<PlumbumPackage *> *)packagesFromRepository:(Repository *)repo error:(NSError **)error {
     NSMutableArray *packages = [NSMutableArray array];
+    
+    // Lazy load cached packages if not already loaded
+    if (_packagesCache.count == 0) {
+        [self loadCachedPackages];
+    }
     
     // Download the Packages file from the repository
     NSString *packagesURL = [repo packagesURL];

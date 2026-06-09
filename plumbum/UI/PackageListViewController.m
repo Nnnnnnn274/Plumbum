@@ -47,13 +47,21 @@
     
     [self setupTableView];
     [self setupSearchBar];
-    [self loadPackages];
+    
+    // Don't load packages in viewDidLoad - wait for viewDidAppear to ensure exploit has run
     
     // Configure navigation bar
     [self configureNavigationBar];
     
     // Listen for package updates from repositories
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(packagesUpdated:) name:@"PackagesUpdated" object:nil];
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    
+    // Load packages when view appears (after exploit has completed)
+    [self loadPackages];
 }
 
 - (void)dealloc {

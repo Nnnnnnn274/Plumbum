@@ -86,9 +86,10 @@
         _packagesDirectory = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
         _packagesDirectory = [_packagesDirectory stringByAppendingPathComponent:@"Packages"];
         _databasePath = [_packagesDirectory stringByAppendingPathComponent:@"installed_packages.plist"];
+        _installedPackagesCache = [NSMutableArray array];
         
-        [self createDirectoriesIfNeeded];
-        [self loadInstalledPackages];
+        // Don't create directories or load packages in init to prevent panics before exploit
+        // They will be loaded on first access
     }
     return self;
 }
@@ -260,6 +261,9 @@
     NSMutableArray *packages = [NSMutableArray array];
     NSFileManager *fm = [NSFileManager defaultManager];
     
+    // Ensure directories are created before trying to load
+    [self createDirectoriesIfNeeded];
+    
     // Check if directory exists
     if (![fm fileExistsAtPath:directory]) {
         if (error) {
@@ -336,6 +340,12 @@
 }
 
 - (PlumbumPackage *)packageWithID:(NSString *)packageID {
+    // Lazy load installed packages if not already loaded
+    if (_installedPackagesCache.count == 0) {
+        [self createDirectoriesIfNeeded];
+        [self loadInstalledPackages];
+    }
+    
     for (PlumbumPackage *package in _installedPackagesCache) {
         if ([package.packageID isEqualToString:packageID]) {
             return package;
@@ -345,6 +355,11 @@
 }
 
 - (NSArray<PlumbumPackage *> *)installedPackages {
+    // Lazy load installed packages on first access
+    if (_installedPackagesCache.count == 0) {
+        [self createDirectoriesIfNeeded];
+        [self loadInstalledPackages];
+    }
     return [_installedPackagesCache copy];
 }
 
