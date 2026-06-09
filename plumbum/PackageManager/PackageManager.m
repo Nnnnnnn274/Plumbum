@@ -294,6 +294,37 @@
     return [packages copy];
 }
 
+- (PlumbumPackage *)loadPackageFromPath:(NSString *)filePath error:(NSError **)error {
+    // Validate the package file first
+    if (![self validatePackageFile:filePath error:error]) {
+        return nil;
+    }
+    
+    // Parse the control file
+    NSDictionary *controlData = [self parsePackageControl:filePath error:error];
+    if (!controlData) {
+        return nil;
+    }
+    
+    // Create package object
+    PlumbumPackage *package = [[PlumbumPackage alloc] initWithDictionary:controlData];
+    package.filePath = filePath;
+    
+    // Check if installed
+    PlumbumPackage *installed = [self packageWithID:package.packageID];
+    if (installed) {
+        package.installStatus = PackageInstallStatusInstalled;
+        package.installedVersion = installed.installedVersion;
+        
+        // Check for update
+        if (![package.version isEqualToString:installed.installedVersion]) {
+            package.installStatus = PackageInstallStatusUpdateAvailable;
+        }
+    }
+    
+    return package;
+}
+
 - (PlumbumPackage *)packageWithID:(NSString *)packageID {
     for (PlumbumPackage *package in _installedPackagesCache) {
         if ([package.packageID isEqualToString:packageID]) {

@@ -48,6 +48,7 @@ typedef NS_ENUM(NSInteger, PackageInstallStatus) {
 
 // Package discovery
 - (NSArray<PlumbumPackage *> *)loadPackagesFromDirectory:(NSString *)directory error:(NSError **)error;
+- (PlumbumPackage *)loadPackageFromPath:(NSString *)filePath error:(NSError **)error;
 - (PlumbumPackage *)packageWithID:(NSString *)packageID;
 
 // Package validation
