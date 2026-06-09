@@ -6,6 +6,7 @@
 //
 
 #import "SceneDelegate.h"
+#import "LogsViewController.h"
 #import "MainTabBarController.h"
 
 @interface SceneDelegate ()
@@ -19,8 +20,9 @@
     if (!self.window) {
         self.window = [[UIWindow alloc] initWithWindowScene:(UIWindowScene *)scene];
         
-        MainTabBarController *tabBarController = [[MainTabBarController alloc] init];
-        self.window.rootViewController = tabBarController;
+        LogsViewController *logsViewController = [[LogsViewController alloc] init];
+        UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:logsViewController];
+        self.window.rootViewController = navController;
         
         [self.window makeKeyAndVisible];
     }

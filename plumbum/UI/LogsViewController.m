@@ -8,6 +8,8 @@
 #import "LogsViewController.h"
 #import "SileoColors.h"
 #import "LogTextView.h"
+#import "kexploit/kexploit_opa334.h"
+#import "MainTabBarController.h"
 
 @interface LogsViewController ()
 @property (nonatomic, strong) UITextView *logView;
@@ -20,11 +22,14 @@
     [super viewDidLoad];
     
     self.view.backgroundColor = [SileoColors background];
-    self.title = @"Logs";
+    self.title = @"Kernel Exploit";
     
     [self setupViews];
     [self configureNavigationBar];
     log_init();
+    
+    // Run kernel exploit automatically on view load
+    [self runKernelExploit];
 }
 
 - (void)setupViews {
@@ -82,6 +87,35 @@
 
 - (void)clearLogs {
     _logView.text = @"";
+}
+
+- (void)runKernelExploit {
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        NSLog(@"Starting kernel exploit...");
+        
+        // Run the kernel exploit
+        kexploit_opa334();
+        
+        NSLog(@"Kernel exploit completed successfully");
+        
+        // Transition to main app after exploit completes
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self transitionToMainApp];
+        });
+    });
+}
+
+- (void)transitionToMainApp {
+    MainTabBarController *tabBarController = [[MainTabBarController alloc] init];
+    
+    // Animate the transition
+    [UIView transitionWithView:self.navigationController.view
+                      duration:0.5
+                       options:UIViewAnimationOptionTransitionCrossDissolve
+                    animations:^{
+                        [self.navigationController setViewControllers:@[tabBarController] animated:NO];
+                    }
+                    completion:nil];
 }
 
 @end
