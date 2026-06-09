@@ -7,7 +7,7 @@
 
 #import "MainTabBarController.h"
 #import "SileoColors.h"
-#import "PackageListViewController.h"
+#import "TweaksViewController.h"
 #import "SourcesViewController.h"
 #import "ExploitViewController.h"
 #import "LogsViewController.h"
@@ -46,12 +46,12 @@
 }
 
 - (void)setupViewControllers {
-    // Packages tab
-    PackageListViewController *packagesVC = [[PackageListViewController alloc] init];
-    UINavigationController *packagesNav = [[UINavigationController alloc] initWithRootViewController:packagesVC];
-    packagesNav.tabBarItem = [[UITabBarItem alloc] initWithTitle:@"Packages" 
-                                                           image:[UIImage systemImageNamed:@"square.stack"] 
-                                                   selectedImage:[UIImage systemImageNamed:@"square.stack.fill"]];
+    // Tweaks tab
+    TweaksViewController *tweaksVC = [[TweaksViewController alloc] init];
+    UINavigationController *tweaksNav = [[UINavigationController alloc] initWithRootViewController:tweaksVC];
+    tweaksNav.tabBarItem = [[UITabBarItem alloc] initWithTitle:@"Tweaks" 
+                                                         image:[UIImage systemImageNamed:@"wrench.and.screwdriver"] 
+                                                 selectedImage:[UIImage systemImageNamed:@"wrench.and.screwdriver.fill"]];
     
     // Sources tab
     SourcesViewController *sourcesVC = [[SourcesViewController alloc] init];
@@ -81,7 +81,7 @@
                                                            image:[UIImage systemImageNamed:@"gear"] 
                                                    selectedImage:[UIImage systemImageNamed:@"gear.fill"]];
     
-    self.viewControllers = @[packagesNav, sourcesNav, exploitNav, logsNav, settingsNav];
+    self.viewControllers = @[tweaksNav, sourcesNav, exploitNav, logsNav, settingsNav];
 }
 
 @end
