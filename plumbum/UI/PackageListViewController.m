@@ -20,6 +20,7 @@
 @property (nonatomic, strong) NSArray<PlumbumPackage *> *filteredPackages;
 @property (nonatomic, strong) UIRefreshControl *refreshControl;
 @property (nonatomic, assign) BOOL exploitRunning;
+@property (nonatomic, assign) BOOL isLoadingPackages;
 @property (nonatomic, strong) RepositoryManager *repoManager;
 @end
 
@@ -44,6 +45,7 @@
     self.view.backgroundColor = [SileoColors background];
     self.title = _repository ? _repository.name : @"Packages";
     _exploitRunning = NO;
+    _isLoadingPackages = NO;
     
     [self setupTableView];
     [self setupSearchBar];
@@ -61,7 +63,10 @@
     [super viewDidAppear:animated];
     
     // Load packages when view appears (after exploit has completed)
-    [self loadPackages];
+    // Load on background thread to prevent overload/crash
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        [self loadPackages];
+    });
 }
 
 - (void)dealloc {
@@ -150,18 +155,27 @@
 }
 
 - (void)loadPackages {
+    // Prevent multiple simultaneous loads to avoid overload
+    if (_isLoadingPackages) {
+        return;
+    }
+    _isLoadingPackages = YES;
+    
     if (_repository) {
         // Load packages from specific repository
         NSError *error = nil;
         NSArray *repoPackages = [_repoManager packagesFromRepository:_repository error:&error];
         
-        if (repoPackages) {
-            self.packages = repoPackages;
-            self.filteredPackages = self.packages;
-            [_tableView reloadData];
-        } else {
-            [self showErrorAlert:error];
-        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.isLoadingPackages = NO;
+            if (repoPackages) {
+                self.packages = repoPackages;
+                self.filteredPackages = self.packages;
+                [_tableView reloadData];
+            } else {
+                [self showErrorAlert:error];
+            }
+        });
     } else {
         // Load all packages from all repositories
         NSError *error = nil;
@@ -182,14 +196,17 @@
             [packages addObjectsFromArray:localPackages];
         }
         
-        if (packages.count > 0) {
-            self.packages = [packages copy];
-            self.filteredPackages = self.packages;
-            [_tableView reloadData];
-        } else {
-            // Load sample packages if no packages found
-            [self loadSamplePackages];
-        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.isLoadingPackages = NO;
+            if (packages.count > 0) {
+                self.packages = [packages copy];
+                self.filteredPackages = self.packages;
+                [_tableView reloadData];
+            } else {
+                // Load sample packages if no packages found
+                [self loadSamplePackages];
+            }
+        });
     }
 }
 
