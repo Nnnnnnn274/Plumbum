@@ -159,12 +159,27 @@
         NSError *error = nil;
         NSArray *allPackages = [_repoManager allPackagesFromRepositories:&error];
         
+        NSMutableArray *packages = [NSMutableArray array];
         if (allPackages && allPackages.count > 0) {
-            self.packages = allPackages;
+            [packages addObjectsFromArray:allPackages];
+        }
+        
+        // Also load packages from local Packages directory
+        NSString *documentsDir = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+        NSString *packagesDir = [documentsDir stringByAppendingPathComponent:@"Packages"];
+        
+        PackageManager *pm = [PackageManager sharedManager];
+        NSArray *localPackages = [pm loadPackagesFromDirectory:packagesDir error:nil];
+        if (localPackages && localPackages.count > 0) {
+            [packages addObjectsFromArray:localPackages];
+        }
+        
+        if (packages.count > 0) {
+            self.packages = [packages copy];
             self.filteredPackages = self.packages;
             [_tableView reloadData];
         } else {
-            // Load sample packages if no repo packages found
+            // Load sample packages if no packages found
             [self loadSamplePackages];
         }
     }

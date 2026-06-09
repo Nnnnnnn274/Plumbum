@@ -260,6 +260,16 @@
     NSMutableArray *packages = [NSMutableArray array];
     NSFileManager *fm = [NSFileManager defaultManager];
     
+    // Check if directory exists
+    if (![fm fileExistsAtPath:directory]) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"PackageManager" 
+                                         code:250 
+                                     userInfo:@{NSLocalizedDescriptionKey: @"Package directory does not exist"}];
+        }
+        return nil;
+    }
+    
     NSArray *files = [fm contentsOfDirectoryAtPath:directory error:error];
     if (!files) {
         return nil;
