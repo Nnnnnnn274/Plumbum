@@ -276,6 +276,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/plumbum",
 					"$(SRCROOT)/plumbum/XPF/src",
 					"$(SRCROOT)/plumbum/XPF/external/ChOma/include",
 				);
@@ -322,6 +323,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/plumbum",
 					"$(SRCROOT)/plumbum/XPF/src",
 					"$(SRCROOT)/plumbum/XPF/external/ChOma/include",
 				);
