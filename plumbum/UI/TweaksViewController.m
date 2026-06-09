@@ -202,15 +202,33 @@
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"TweakCell"];
+    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"TweakCell"];
     cell.backgroundColor = [SileoColors cellBackgroundColor];
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
     
     NSDictionary *tweak = _installedTweaks[indexPath.row];
     cell.textLabel.text = tweak[@"name"];
     cell.textLabel.textColor = [SileoColors primaryText];
-    cell.detailTextLabel.text = [NSString stringWithFormat:@"Type: %@", tweak[@"type"]];
-    cell.detailTextLabel.textColor = [SileoColors secondaryText];
+    cell.textLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+    
+    // Add install button
+    UIButton *installButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [installButton setTitle:@"Install" forState:UIControlStateNormal];
+    installButton.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
+    installButton.layer.cornerRadius = 8;
+    installButton.backgroundColor = [SileoColors sileoBlue];
+    [installButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    installButton.tag = indexPath.row;
+    [installButton addTarget:self action:@selector(installTweak:) forControlEvents:UIControlEventTouchUpInside];
+    installButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [cell.contentView addSubview:installButton];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [installButton.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-16],
+        [installButton.centerYAnchor constraintEqualToAnchor:cell.contentView.centerYAnchor],
+        [installButton.widthAnchor constraintEqualToConstant:80],
+        [installButton.heightAnchor constraintEqualToConstant:32]
+    ]];
     
     return cell;
 }
@@ -219,6 +237,61 @@
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
+}
+
+- (void)installTweak:(UIButton *)sender {
+    NSInteger index = sender.tag;
+    NSDictionary *tweak = _installedTweaks[index];
+    NSString *tweakPath = tweak[@"path"];
+    
+    // Install the tweak
+    NSError *error = nil;
+    PackageManager *packageManager = [[PackageManager alloc] init];
+    
+    if ([tweak[@"type"] isEqualToString:@"misaka"]) {
+        MisakaPackageManager *misakaManager = [[MisakaPackageManager alloc] init];
+        BOOL success = [misakaManager installMisakaPackage:tweakPath error:&error];
+        
+        if (success) {
+            UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Success"
+                                                                           message:@"Tweak installed successfully"
+                                                                    preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+            [self presentViewController:alert animated:YES completion:nil];
+        } else {
+            UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Installation Failed"
+                                                                           message:error.localizedDescription
+                                                                    preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+            [self presentViewController:alert animated:YES completion:nil];
+        }
+    } else {
+        // Install .plumbum file
+        PlumbumPackage *package = [packageManager loadPackageFromPath:tweakPath error:&error];
+        if (package) {
+            BOOL success = [packageManager installPackage:package error:&error];
+            
+            if (success) {
+                UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Success"
+                                                                               message:@"Tweak installed successfully"
+                                                                        preferredStyle:UIAlertControllerStyleAlert];
+                [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+                [self presentViewController:alert animated:YES completion:nil];
+            } else {
+                UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Installation Failed"
+                                                                               message:error.localizedDescription
+                                                                        preferredStyle:UIAlertControllerStyleAlert];
+                [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+                [self presentViewController:alert animated:YES completion:nil];
+            }
+        } else {
+            UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Installation Failed"
+                                                                           message:@"Failed to load package"
+                                                                    preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+            [self presentViewController:alert animated:YES completion:nil];
+        }
+    }
 }
 
 @end

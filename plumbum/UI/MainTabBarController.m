@@ -9,7 +9,6 @@
 #import "SileoColors.h"
 #import "TweaksViewController.h"
 #import "SourcesViewController.h"
-#import "ExploitViewController.h"
 #import "LogsViewController.h"
 #import "SettingsViewController.h"
 
@@ -60,13 +59,6 @@
                                                           image:[UIImage systemImageNamed:@"globe"] 
                                                   selectedImage:[UIImage systemImageNamed:@"globe.fill"]];
     
-    // Exploit tab
-    ExploitViewController *exploitVC = [[ExploitViewController alloc] init];
-    UINavigationController *exploitNav = [[UINavigationController alloc] initWithRootViewController:exploitVC];
-    exploitNav.tabBarItem = [[UITabBarItem alloc] initWithTitle:@"Exploit" 
-                                                          image:[UIImage systemImageNamed:@"bolt"] 
-                                                  selectedImage:[UIImage systemImageNamed:@"bolt.fill"]];
-    
     // Logs tab
     LogsViewController *logsVC = [[LogsViewController alloc] init];
     UINavigationController *logsNav = [[UINavigationController alloc] initWithRootViewController:logsVC];
@@ -81,7 +73,7 @@
                                                            image:[UIImage systemImageNamed:@"gear"] 
                                                    selectedImage:[UIImage systemImageNamed:@"gear.fill"]];
     
-    self.viewControllers = @[tweaksNav, sourcesNav, exploitNav, logsNav, settingsNav];
+    self.viewControllers = @[tweaksNav, sourcesNav, logsNav, settingsNav];
 }
 
 @end
