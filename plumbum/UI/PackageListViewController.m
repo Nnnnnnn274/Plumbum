@@ -22,6 +22,8 @@
 @property (nonatomic, assign) BOOL exploitRunning;
 @property (nonatomic, assign) BOOL isLoadingPackages;
 @property (nonatomic, strong) RepositoryManager *repoManager;
+@property (nonatomic, strong) UIActivityIndicatorView *loadingIndicator;
+@property (nonatomic, strong) UILabel *loadingLabel;
 @end
 
 @implementation PackageListViewController
@@ -49,6 +51,7 @@
     
     [self setupTableView];
     [self setupSearchBar];
+    [self setupLoadingView];
     
     // Don't load packages in viewDidLoad - wait for viewDidAppear to ensure exploit has run
     
@@ -131,6 +134,34 @@
     _tableView.tableHeaderView = _searchBar;
 }
 
+- (void)setupLoadingView {
+    // Loading indicator
+    _loadingIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleLarge];
+    _loadingIndicator.color = [SileoColors sileoBlue];
+    _loadingIndicator.translatesAutoresizingMaskIntoConstraints = NO;
+    _loadingIndicator.hidesWhenStopped = YES;
+    [self.view addSubview:_loadingIndicator];
+    
+    // Loading label
+    _loadingLabel = [[UILabel alloc] init];
+    _loadingLabel.text = @"Loading packages...";
+    _loadingLabel.textColor = [SileoColors primaryText];
+    _loadingLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+    _loadingLabel.textAlignment = NSTextAlignmentCenter;
+    _loadingLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _loadingLabel.hidden = YES;
+    [self.view addSubview:_loadingLabel];
+    
+    // Layout
+    [NSLayoutConstraint activateConstraints:@[
+        [_loadingIndicator.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [_loadingIndicator.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor],
+        
+        [_loadingLabel.topAnchor constraintEqualToAnchor:_loadingIndicator.bottomAnchor constant:20],
+        [_loadingLabel.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor]
+    ]];
+}
+
 - (void)configureNavigationBar {
     UIBarButtonItem *runExploitButton = [[UIBarButtonItem alloc] initWithTitle:@"Run Exploit" style:UIBarButtonItemStylePlain target:self action:@selector(runExploit)];
     self.navigationItem.rightBarButtonItem = runExploitButton;
@@ -161,6 +192,9 @@
     }
     _isLoadingPackages = YES;
     
+    // Show loading indicator
+    [self showLoadingView];
+    
     if (_repository) {
         // Load packages from specific repository
         NSError *error = nil;
@@ -168,6 +202,7 @@
         
         dispatch_async(dispatch_get_main_queue(), ^{
             self.isLoadingPackages = NO;
+            [self hideLoadingView];
             if (repoPackages) {
                 self.packages = repoPackages;
                 self.filteredPackages = self.packages;
@@ -198,81 +233,35 @@
         
         dispatch_async(dispatch_get_main_queue(), ^{
             self.isLoadingPackages = NO;
+            [self hideLoadingView];
             if (packages.count > 0) {
                 self.packages = [packages copy];
                 self.filteredPackages = self.packages;
                 [_tableView reloadData];
             } else {
-                // Load sample packages if no packages found
-                [self loadSamplePackages];
+                // No packages found - show empty state instead of sample packages
+                self.packages = @[];
+                self.filteredPackages = @[];
+                [_tableView reloadData];
             }
         });
     }
 }
 
-- (void)loadSamplePackages {
-    NSArray *packageData = @[
-        @{
-            @"Package": @"com.example.springtoolz",
-            @"Name": @"SpringToolz",
-            @"Description": @"Powerful SpringBoard customization with many features",
-            @"Version": @"2.1.0",
-            @"Author": @"CoolDev",
-            @"Section": @"Apps"
-        },
-        @{
-            @"Package": @"com.example.noctis12",
-            @"Name": @"Noctis12",
-            @"Description": @"Beautiful dark mode for iOS",
-            @"Version": @"3.0.1",
-            @"Author": @"Guilherme Rambo",
-            @"Section": @"Themes"
-        },
-        @{
-            @"Package": @"com.example.cercube",
-            @"Name": @"Cercube",
-            @"Description": @"YouTube enhancement tweak",
-            @"Version": @"5.0.0",
-            @"Author": @"iCraze",
-            @"Section": @"Tweaks"
-        },
-        @{
-            @"Package": @"com.example.filza",
-            @"Name": @"Filza",
-            @"Description": @"File manager for iOS",
-            @"Version": @"4.0.0",
-            @"Author": @"Tig0",
-            @"Section": @"Utilities"
-        },
-        @{
-            @"Package": @"com.example.safaripuls",
-            @"Name": @"Safari Plus",
-            @"Description": @"Enhance Safari with new features",
-            @"Version": @"1.5.0",
-            @"Author": @"CP Digital Darkroom",
-            @"Section": @"Apps"
-        }
-    ];
-    
-    NSMutableArray *packages = [NSMutableArray array];
-    for (NSDictionary *dict in packageData) {
-        PlumbumPackage *package = [[PlumbumPackage alloc] initWithDictionary:dict];
-        
-        // Check if installed
-        PackageManager *manager = [PackageManager sharedManager];
-        PlumbumPackage *installed = [manager packageWithID:package.packageID];
-        if (installed) {
-            package.installStatus = PackageInstallStatusInstalled;
-            package.installedVersion = installed.installedVersion;
-        }
-        
-        [packages addObject:package];
-    }
-    
-    self.packages = [packages copy];
-    self.filteredPackages = self.packages;
-    
-    [_tableView reloadData];
+- (void)showLoadingView {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.loadingIndicator startAnimating];
+        self.loadingLabel.hidden = NO;
+        self.tableView.hidden = YES;
+    });
+}
+
+- (void)hideLoadingView {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.loadingIndicator stopAnimating];
+        self.loadingLabel.hidden = YES;
+        self.tableView.hidden = NO;
+    });
 }
 
 - (void)refreshPackages {
