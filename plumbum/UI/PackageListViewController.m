@@ -66,10 +66,7 @@
     [super viewDidAppear:animated];
     
     // Load packages when view appears (after exploit has completed)
-    // Load on background thread to prevent overload/crash
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        [self loadPackages];
-    });
+    [self loadPackages];
 }
 
 - (void)dealloc {
@@ -192,76 +189,77 @@
     }
     _isLoadingPackages = YES;
     
-    // Show loading indicator
-    [self showLoadingView];
-    
-    if (_repository) {
-        // Load packages from specific repository
-        NSError *error = nil;
-        NSArray *repoPackages = [_repoManager packagesFromRepository:_repository error:&error];
+    // Show loading indicator on main thread first
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self showLoadingView];
         
-        dispatch_async(dispatch_get_main_queue(), ^{
-            self.isLoadingPackages = NO;
-            [self hideLoadingView];
-            if (repoPackages) {
-                self.packages = repoPackages;
-                self.filteredPackages = self.packages;
-                [_tableView reloadData];
+        // Then do the actual loading on background thread
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            if (self->_repository) {
+                // Load packages from specific repository
+                NSError *error = nil;
+                NSArray *repoPackages = [self->_repoManager packagesFromRepository:self->_repository error:&error];
+                
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    self.isLoadingPackages = NO;
+                    [self hideLoadingView];
+                    if (repoPackages) {
+                        self.packages = repoPackages;
+                        self.filteredPackages = self.packages;
+                        [self.tableView reloadData];
+                    } else {
+                        [self showErrorAlert:error];
+                    }
+                });
             } else {
-                [self showErrorAlert:error];
+                // Load all packages from all repositories
+                NSError *error = nil;
+                NSArray *allPackages = [self->_repoManager allPackagesFromRepositories:&error];
+                
+                NSMutableArray *packages = [NSMutableArray array];
+                if (allPackages && allPackages.count > 0) {
+                    [packages addObjectsFromArray:allPackages];
+                }
+                
+                // Also load packages from local Packages directory
+                NSString *documentsDir = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+                NSString *packagesDir = [documentsDir stringByAppendingPathComponent:@"Packages"];
+                
+                PackageManager *pm = [PackageManager sharedManager];
+                NSArray *localPackages = [pm loadPackagesFromDirectory:packagesDir error:nil];
+                if (localPackages && localPackages.count > 0) {
+                    [packages addObjectsFromArray:localPackages];
+                }
+                
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    self.isLoadingPackages = NO;
+                    [self hideLoadingView];
+                    if (packages.count > 0) {
+                        self.packages = [packages copy];
+                        self.filteredPackages = self.packages;
+                        [self.tableView reloadData];
+                    } else {
+                        // No packages found - show empty state instead of sample packages
+                        self.packages = @[];
+                        self.filteredPackages = @[];
+                        [self.tableView reloadData];
+                    }
+                });
             }
         });
-    } else {
-        // Load all packages from all repositories
-        NSError *error = nil;
-        NSArray *allPackages = [_repoManager allPackagesFromRepositories:&error];
-        
-        NSMutableArray *packages = [NSMutableArray array];
-        if (allPackages && allPackages.count > 0) {
-            [packages addObjectsFromArray:allPackages];
-        }
-        
-        // Also load packages from local Packages directory
-        NSString *documentsDir = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-        NSString *packagesDir = [documentsDir stringByAppendingPathComponent:@"Packages"];
-        
-        PackageManager *pm = [PackageManager sharedManager];
-        NSArray *localPackages = [pm loadPackagesFromDirectory:packagesDir error:nil];
-        if (localPackages && localPackages.count > 0) {
-            [packages addObjectsFromArray:localPackages];
-        }
-        
-        dispatch_async(dispatch_get_main_queue(), ^{
-            self.isLoadingPackages = NO;
-            [self hideLoadingView];
-            if (packages.count > 0) {
-                self.packages = [packages copy];
-                self.filteredPackages = self.packages;
-                [_tableView reloadData];
-            } else {
-                // No packages found - show empty state instead of sample packages
-                self.packages = @[];
-                self.filteredPackages = @[];
-                [_tableView reloadData];
-            }
-        });
-    }
+    });
 }
 
 - (void)showLoadingView {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.loadingIndicator startAnimating];
-        self.loadingLabel.hidden = NO;
-        self.tableView.hidden = YES;
-    });
+    [self.loadingIndicator startAnimating];
+    self.loadingLabel.hidden = NO;
+    self.tableView.hidden = YES;
 }
 
 - (void)hideLoadingView {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.loadingIndicator stopAnimating];
-        self.loadingLabel.hidden = YES;
-        self.tableView.hidden = NO;
-    });
+    [self.loadingIndicator stopAnimating];
+    self.loadingLabel.hidden = YES;
+    self.tableView.hidden = NO;
 }
 
 - (void)refreshPackages {
