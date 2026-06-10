@@ -285,12 +285,17 @@
 
 #pragma mark - Package Discovery
 
-- (NSArray<PlumbumPackage *> *)packagesFromRepository:(Repository *)repo error:(NSError **)error {
-    NSMutableArray *packages = [NSMutableArray array];
-    
+- (void)packagesFromRepository:(Repository *)repo completion:(void (^)(NSArray<PlumbumPackage *> *packages, NSError *error))completion {
     // Lazy load cached packages if not already loaded
     if (_packagesCache.count == 0) {
         [self loadCachedPackages];
+    }
+    
+    // Check if we have cached packages
+    NSArray *cachedPackages = _packagesCache[repo.url];
+    if (cachedPackages && cachedPackages.count > 0) {
+        completion(cachedPackages, nil);
+        return;
     }
     
     // Download the Packages file from the repository
@@ -298,14 +303,15 @@
     NSURL *url = [NSURL URLWithString:packagesURL];
     
     if (!url) {
-        // If URL construction fails, return empty array
-        return @[];
+        completion(@[], nil);
+        return;
     }
     
     NSURLSession *session = [NSURLSession sharedSession];
     NSURLSessionDataTask *task = [session dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *networkError) {
         if (networkError || !data) {
             NSLog(@"Failed to download Packages from %@: %@", packagesURL, networkError.localizedDescription);
+            completion(@[], networkError);
             return;
         }
         
@@ -320,33 +326,36 @@
             self->_packagesCache[repo.url] = autoPortedPackages;
             [self saveCachedPackages];
             
-            dispatch_async(dispatch_get_main_queue(), ^{
-                // Notify that packages are updated
-                [[NSNotificationCenter defaultCenter] postNotificationName:@"PackagesUpdated" object:nil];
-            });
+            completion(autoPortedPackages, nil);
+        } else {
+            completion(@[], nil);
         }
     }];
     
     [task resume];
-    
-    // Return cached packages if available, otherwise return empty array
-    NSArray *cachedPackages = _packagesCache[repo.url];
-    if (cachedPackages && cachedPackages.count > 0) {
-        return cachedPackages;
-    }
-    
-    return @[];
 }
 
-- (NSArray<PlumbumPackage *> *)allPackagesFromRepositories:(NSError **)error {
+- (void)allPackagesFromRepositories:(void (^)(NSArray<PlumbumPackage *> *packages, NSError *error))completion {
     NSMutableArray *allPackages = [NSMutableArray array];
+    dispatch_group_t group = dispatch_group_create();
+    __block NSError *firstError = nil;
     
     for (Repository *repo in _repositoriesCache) {
-        NSArray *repoPackages = [self packagesFromRepository:repo error:error];
-        [allPackages addObjectsFromArray:repoPackages];
+        dispatch_group_enter(group);
+        [self packagesFromRepository:repo completion:^(NSArray<PlumbumPackage *> *packages, NSError *error) {
+            if (packages) {
+                [allPackages addObjectsFromArray:packages];
+            }
+            if (error && !firstError) {
+                firstError = error;
+            }
+            dispatch_group_leave(group);
+        }];
     }
     
-    return [allPackages copy];
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        completion([allPackages copy], firstError);
+    });
 }
 
 - (NSArray *)samplePackagesForRepository:(Repository *)repo {

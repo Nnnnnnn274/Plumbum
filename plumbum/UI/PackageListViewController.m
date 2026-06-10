@@ -189,91 +189,38 @@
     }
     _isLoadingPackages = YES;
     
-    // Show loading indicator on main thread first
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self showLoadingView];
+    // Show loading indicator
+    [self showLoadingView];
+    
+    if (_repository) {
+        // Load packages from specific repository
+        [_repoManager packagesFromRepository:_repository completion:^(NSArray<PlumbumPackage *> *repoPackages, NSError *error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.isLoadingPackages = NO;
+                [self hideLoadingView];
+                if (repoPackages) {
+                    self.packages = repoPackages;
+                    self.filteredPackages = self.packages;
+                    [self.tableView reloadData];
+                } else {
+                    [self showErrorAlert:error];
+                }
+            });
+        }];
+    } else {
+        // Load packages from each repository one at a time
+        NSMutableArray *packages = [NSMutableArray array];
+        NSArray *repositories = [_repoManager repositories];
+        NSInteger totalRepos = repositories.count;
+        __block NSInteger currentRepoIndex = 0;
         
-        // Then do the actual loading on background thread
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            if (self->_repository) {
-                // Load packages from specific repository
-                NSError *error = nil;
-                NSArray *repoPackages = [self->_repoManager packagesFromRepository:self->_repository error:&error];
-                
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    self.isLoadingPackages = NO;
-                    [self hideLoadingView];
-                    if (repoPackages) {
-                        self.packages = repoPackages;
-                        self.filteredPackages = self.packages;
-                        [self.tableView reloadData];
-                    } else {
-                        [self showErrorAlert:error];
-                    }
-                });
-            } else {
-                // Load packages from each repository one at a time
-                NSMutableArray *packages = [NSMutableArray array];
-                
-                // Load from each repository one at a time
-                NSArray *repositories = [self->_repoManager repositories];
-                NSInteger totalRepos = repositories.count;
-                
-                for (NSInteger repoIndex = 0; repoIndex < totalRepos; repoIndex++) {
-                    Repository *repo = repositories[repoIndex];
-                    
-                    // Update loading label to show which repo is being loaded
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        self.loadingLabel.text = [NSString stringWithFormat:@"Loading from %@ (%ld/%ld)...", repo.name, (long)(repoIndex + 1), (long)totalRepos];
-                    });
-                    
-                    // Load packages from this repository
-                    NSError *error = nil;
-                    NSArray *repoPackages = [self->_repoManager packagesFromRepository:repo error:&error];
-                    
-                    if (repoPackages && repoPackages.count > 0) {
-                        // Add packages one by one
-                        for (NSInteger i = 0; i < repoPackages.count; i++) {
-                            PlumbumPackage *pkg = repoPackages[i];
-                            [packages addObject:pkg];
-                            
-                            // Update loading label with progress
-                            dispatch_async(dispatch_get_main_queue(), ^{
-                                self.loadingLabel.text = [NSString stringWithFormat:@"Loading from %@ (%ld/%ld)... (%ld/%ld)", repo.name, (long)(repoIndex + 1), (long)totalRepos, (long)(i + 1), (long)repoPackages.count];
-                            });
-                            
-                            // Small delay to show progress
-                            [NSThread sleepForTimeInterval:0.1];
-                        }
-                    }
-                }
-                
-                // Then load from local Packages directory
-                NSString *documentsDir = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-                NSString *packagesDir = [documentsDir stringByAppendingPathComponent:@"Packages"];
-                
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    self.loadingLabel.text = @"Loading local packages...";
-                });
-                
-                PackageManager *pm = [PackageManager sharedManager];
-                NSArray *localPackages = [pm loadPackagesFromDirectory:packagesDir error:nil];
-                if (localPackages && localPackages.count > 0) {
-                    // Add local packages one by one
-                    for (NSInteger i = 0; i < localPackages.count; i++) {
-                        PlumbumPackage *pkg = localPackages[i];
-                        [packages addObject:pkg];
-                        
-                        // Update loading label with progress
-                        dispatch_async(dispatch_get_main_queue(), ^{
-                            self.loadingLabel.text = [NSString stringWithFormat:@"Loading local packages... (%ld/%ld)", (long)(i + 1), (long)localPackages.count];
-                        });
-                        
-                        // Small delay to show progress
-                        [NSThread sleepForTimeInterval:0.1];
-                    }
-                }
-                
+        [self loadNextRepository:repositories 
+                           atIndex:currentRepoIndex 
+                          totalRepos:totalRepos 
+                           packages:packages 
+                        completion:^{
+            // After all repos are loaded, load local packages
+            [self loadLocalPackages:packages completion:^{
                 dispatch_async(dispatch_get_main_queue(), ^{
                     self.isLoadingPackages = NO;
                     [self hideLoadingView];
@@ -288,9 +235,81 @@
                         [self.tableView reloadData];
                     }
                 });
-            }
-        });
+            }];
+        }];
+    }
+}
+
+- (void)loadNextRepository:(NSArray<Repository *> *)repositories 
+                   atIndex:(NSInteger)index 
+                  totalRepos:(NSInteger)totalRepos 
+                   packages:(NSMutableArray *)packages 
+                completion:(void (^)(void))completion {
+    if (index >= totalRepos) {
+        completion();
+        return;
+    }
+    
+    Repository *repo = repositories[index];
+    
+    // Update loading label to show which repo is being loaded
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.loadingLabel.text = [NSString stringWithFormat:@"Loading from %@ (%ld/%ld)...", repo.name, (long)(index + 1), (long)totalRepos];
     });
+    
+    [_repoManager packagesFromRepository:repo completion:^(NSArray<PlumbumPackage *> *repoPackages, NSError *error) {
+        if (repoPackages && repoPackages.count > 0) {
+            // Add packages one by one
+            for (NSInteger i = 0; i < repoPackages.count; i++) {
+                PlumbumPackage *pkg = repoPackages[i];
+                [packages addObject:pkg];
+                
+                // Update loading label with progress
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    self.loadingLabel.text = [NSString stringWithFormat:@"Loading from %@ (%ld/%ld)... (%ld/%ld)", repo.name, (long)(index + 1), (long)totalRepos, (long)(i + 1), (long)repoPackages.count];
+                });
+                
+                // Small delay to show progress
+                [NSThread sleepForTimeInterval:0.1];
+            }
+        }
+        
+        // Load next repository
+        [self loadNextRepository:repositories 
+                           atIndex:index + 1 
+                          totalRepos:totalRepos 
+                           packages:packages 
+                        completion:completion];
+    }];
+}
+
+- (void)loadLocalPackages:(NSMutableArray *)packages completion:(void (^)(void))completion {
+    NSString *documentsDir = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+    NSString *packagesDir = [documentsDir stringByAppendingPathComponent:@"Packages"];
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.loadingLabel.text = @"Loading local packages...";
+    });
+    
+    PackageManager *pm = [PackageManager sharedManager];
+    NSArray *localPackages = [pm loadPackagesFromDirectory:packagesDir error:nil];
+    if (localPackages && localPackages.count > 0) {
+        // Add local packages one by one
+        for (NSInteger i = 0; i < localPackages.count; i++) {
+            PlumbumPackage *pkg = localPackages[i];
+            [packages addObject:pkg];
+            
+            // Update loading label with progress
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.loadingLabel.text = [NSString stringWithFormat:@"Loading local packages... (%ld/%ld)", (long)(i + 1), (long)localPackages.count];
+            });
+            
+            // Small delay to show progress
+            [NSThread sleepForTimeInterval:0.1];
+        }
+    }
+    
+    completion();
 }
 
 - (void)showLoadingView {

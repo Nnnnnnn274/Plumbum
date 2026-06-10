@@ -53,8 +53,8 @@ typedef NS_ENUM(NSInteger, RepositoryType) {
 - (void)refreshAllRepositories:(void (^)(BOOL success, NSError * _Nullable error))completion;
 
 // Package discovery from repos
-- (NSArray<PlumbumPackage *> *)packagesFromRepository:(Repository *)repo error:(NSError **)error;
-- (NSArray<PlumbumPackage *> *)allPackagesFromRepositories:(NSError **)error;
+- (void)packagesFromRepository:(Repository *)repo completion:(void (^)(NSArray<PlumbumPackage *> *packages, NSError *error))completion;
+- (void)allPackagesFromRepositories:(void (^)(NSArray<PlumbumPackage *> *packages, NSError *error))completion;
 
 // Default repositories
 - (void)addDefaultRepositories;
