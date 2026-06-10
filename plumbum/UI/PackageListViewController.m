@@ -232,15 +232,19 @@
                     NSArray *repoPackages = [self->_repoManager packagesFromRepository:repo error:&error];
                     
                     if (repoPackages && repoPackages.count > 0) {
-                        // Add all packages from this repo at once
-                        [packages addObjectsFromArray:repoPackages];
-                        
-                        // Update UI with all packages from this repo added
-                        dispatch_async(dispatch_get_main_queue(), ^{
-                            self.packages = [packages copy];
-                            self.filteredPackages = self.packages;
-                            [self.tableView reloadData];
-                        });
+                        // Add packages one by one
+                        for (NSInteger i = 0; i < repoPackages.count; i++) {
+                            PlumbumPackage *pkg = repoPackages[i];
+                            [packages addObject:pkg];
+                            
+                            // Update loading label with progress
+                            dispatch_async(dispatch_get_main_queue(), ^{
+                                self.loadingLabel.text = [NSString stringWithFormat:@"Loading from %@ (%ld/%ld)... (%ld/%ld)", repo.name, (long)(repoIndex + 1), (long)totalRepos, (long)(i + 1), (long)repoPackages.count];
+                            });
+                            
+                            // Small delay to show progress
+                            [NSThread sleepForTimeInterval:0.1];
+                        }
                     }
                 }
                 
@@ -255,15 +259,19 @@
                 PackageManager *pm = [PackageManager sharedManager];
                 NSArray *localPackages = [pm loadPackagesFromDirectory:packagesDir error:nil];
                 if (localPackages && localPackages.count > 0) {
-                    // Add all local packages at once
-                    [packages addObjectsFromArray:localPackages];
-                    
-                    // Update UI with all local packages added
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        self.packages = [packages copy];
-                        self.filteredPackages = self.packages;
-                        [self.tableView reloadData];
-                    });
+                    // Add local packages one by one
+                    for (NSInteger i = 0; i < localPackages.count; i++) {
+                        PlumbumPackage *pkg = localPackages[i];
+                        [packages addObject:pkg];
+                        
+                        // Update loading label with progress
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            self.loadingLabel.text = [NSString stringWithFormat:@"Loading local packages... (%ld/%ld)", (long)(i + 1), (long)localPackages.count];
+                        });
+                        
+                        // Small delay to show progress
+                        [NSThread sleepForTimeInterval:0.1];
+                    }
                 }
                 
                 dispatch_async(dispatch_get_main_queue(), ^{
