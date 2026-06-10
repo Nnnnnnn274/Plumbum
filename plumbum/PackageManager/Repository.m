@@ -298,10 +298,8 @@
     NSURL *url = [NSURL URLWithString:packagesURL];
     
     if (!url) {
-        // If URL construction fails, fall back to sample packages
-        NSArray *samplePackages = [self samplePackagesForRepository:repo];
-        [packages addObjectsFromArray:samplePackages];
-        return [packages copy];
+        // If URL construction fails, return empty array
+        return @[];
     }
     
     NSURLSession *session = [NSURLSession sharedSession];
@@ -331,16 +329,13 @@
     
     [task resume];
     
-    // Return cached packages if available, otherwise return sample packages
+    // Return cached packages if available, otherwise return empty array
     NSArray *cachedPackages = _packagesCache[repo.url];
     if (cachedPackages && cachedPackages.count > 0) {
         return cachedPackages;
     }
     
-    NSArray *samplePackages = [self samplePackagesForRepository:repo];
-    [packages addObjectsFromArray:samplePackages];
-    
-    return [packages copy];
+    return @[];
 }
 
 - (NSArray<PlumbumPackage *> *)allPackagesFromRepositories:(NSError **)error {

@@ -212,23 +212,58 @@
                     }
                 });
             } else {
-                // Load all packages from all repositories
-                NSError *error = nil;
-                NSArray *allPackages = [self->_repoManager allPackagesFromRepositories:&error];
-                
+                // Load packages from each repository one at a time
                 NSMutableArray *packages = [NSMutableArray array];
-                if (allPackages && allPackages.count > 0) {
-                    [packages addObjectsFromArray:allPackages];
+                
+                // Load from each repository one at a time
+                NSArray *repositories = [self->_repoManager repositories];
+                NSInteger totalRepos = repositories.count;
+                
+                for (NSInteger repoIndex = 0; repoIndex < totalRepos; repoIndex++) {
+                    Repository *repo = repositories[repoIndex];
+                    
+                    // Update loading label to show which repo is being loaded
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        self.loadingLabel.text = [NSString stringWithFormat:@"Loading from %@ (%ld/%ld)...", repo.name, (long)(repoIndex + 1), (long)totalRepos];
+                    });
+                    
+                    // Load packages from this repository
+                    NSError *error = nil;
+                    NSArray *repoPackages = [self->_repoManager packagesFromRepository:repo error:&error];
+                    
+                    if (repoPackages && repoPackages.count > 0) {
+                        // Add all packages from this repo at once
+                        [packages addObjectsFromArray:repoPackages];
+                        
+                        // Update UI with all packages from this repo added
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            self.packages = [packages copy];
+                            self.filteredPackages = self.packages;
+                            [self.tableView reloadData];
+                        });
+                    }
                 }
                 
-                // Also load packages from local Packages directory
+                // Then load from local Packages directory
                 NSString *documentsDir = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
                 NSString *packagesDir = [documentsDir stringByAppendingPathComponent:@"Packages"];
+                
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    self.loadingLabel.text = @"Loading local packages...";
+                });
                 
                 PackageManager *pm = [PackageManager sharedManager];
                 NSArray *localPackages = [pm loadPackagesFromDirectory:packagesDir error:nil];
                 if (localPackages && localPackages.count > 0) {
+                    // Add all local packages at once
                     [packages addObjectsFromArray:localPackages];
+                    
+                    // Update UI with all local packages added
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        self.packages = [packages copy];
+                        self.filteredPackages = self.packages;
+                        [self.tableView reloadData];
+                    });
                 }
                 
                 dispatch_async(dispatch_get_main_queue(), ^{
@@ -239,7 +274,7 @@
                         self.filteredPackages = self.packages;
                         [self.tableView reloadData];
                     } else {
-                        // No packages found - show empty state instead of sample packages
+                        // No packages found - show empty state
                         self.packages = @[];
                         self.filteredPackages = @[];
                         [self.tableView reloadData];
