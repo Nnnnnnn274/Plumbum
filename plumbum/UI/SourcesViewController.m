@@ -118,10 +118,8 @@ static NSString * const kSourceCellID = @"SourceCell";
 - (void)configureWithRepository:(Repository *)repo {
     _iconImageView.image = [UIImage systemImageNamed:@"globe"];
     _nameLabel.text = repo.name;
-    _urlLabel.text = repo.url.host ?: repo.url.absoluteString;
-    _packageCountLabel.text = repo.packages.count > 0
-        ? [NSString stringWithFormat:@"%lu packages", (unsigned long)repo.packages.count]
-        : @"Loading…";
+    _urlLabel.text = repo.url;
+    _packageCountLabel.text = @"";
 }
 
 - (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated {
@@ -238,17 +236,14 @@ static NSString * const kSourceCellID = @"SourceCell";
     UIAlertAction *add = [UIAlertAction actionWithTitle:@"Add" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         NSString *urlString = alert.textFields.firstObject.text;
         if (urlString.length > 0) {
-            NSURL *url = [NSURL URLWithString:urlString];
-            if (url) {
-                RepositoryManager *rm = [RepositoryManager sharedManager];
-                [rm addRepositoryWithURL:url completion:^(Repository *repo, NSError *error) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        if (repo) {
-                            [self->_repositories addObject:repo];
-                            [self->_tableView reloadData];
-                        }
-                    });
-                }];
+            Repository *repo = [[Repository alloc] init];
+            repo.url = urlString;
+            repo.name = urlString;
+            RepositoryManager *rm = [RepositoryManager sharedManager];
+            NSError *error = nil;
+            if ([rm addRepository:repo error:&error]) {
+                [self->_repositories addObject:repo];
+                [self->_tableView reloadData];
             }
         }
     }];
