@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "AAA297762F72D439000B5902"
-               BuildableName = "kfun.app"
+               BuildableName = "plumbum.app"
                BlueprintName = "plumbum"
                ReferencedContainer = "container:plumbum.xcodeproj">
             </BuildableReference>

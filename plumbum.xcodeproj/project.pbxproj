@@ -21,7 +21,7 @@
 /* Begin PBXFileReference section */
 		AA73F7982F7BC6CB00134C31 /* ChOma.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = ChOma.xcodeproj; sourceTree = "<group>"; };
 		AA794BC92F828668001F0544 /* ChOma.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = ChOma.xcodeproj; sourceTree = "<group>"; };
-		AAA297772F72D439000B5902 /* kfun.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = kfun.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AAA297772F72D439000B5902 /* plumbum.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = plumbum.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AAA2982D2F741178000B5902 /* ChOma.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = ChOma.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -148,7 +148,7 @@
 		AAA297782F72D439000B5902 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				AAA297772F72D439000B5902 /* kfun.app */,
+				AAA297772F72D439000B5902 /* plumbum.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -281,7 +281,7 @@
 					"$(SRCROOT)/plumbum/XPF/external/ChOma/include",
 				);
 				INFOPLIST_FILE = "plumbum/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = kfun;
+				INFOPLIST_KEY_CFBundleDisplayName = plumbum;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -328,7 +328,7 @@
 					"$(SRCROOT)/plumbum/XPF/external/ChOma/include",
 				);
 				INFOPLIST_FILE = "plumbum/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = kfun;
+				INFOPLIST_KEY_CFBundleDisplayName = plumbum;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
