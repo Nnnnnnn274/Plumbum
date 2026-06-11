@@ -206,30 +206,16 @@
     
     // Use dpkg to actually install the package
     // This requires root/sandbox escape which should be available after exploit
-    NSTask *task = [[NSTask alloc] init];
-    [task setLaunchPath:@"/usr/bin/dpkg"];
-    [task setArguments:@[@"-i", destPath]];
+    NSString *cmd = [NSString stringWithFormat:@"/usr/bin/dpkg -i '%@'", destPath];
+    int result = system([cmd UTF8String]);
     
-    NSPipe *pipe = [NSPipe pipe];
-    [task setStandardOutput:pipe];
-    [task setStandardError:pipe];
-    
-    @try {
-        [task launch];
-        [task waitUntilExit];
-        
-        if (task.terminationStatus != 0) {
-            if (error) {
-                NSData *data = [pipe.fileHandleForReading readDataToEndOfFile];
-                NSString *output = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-                *error = [NSError errorWithDomain:@"PackageManager" 
-                                             code:103 
-                                         userInfo:@{NSLocalizedDescriptionKey: output ?: @"dpkg installation failed"}];
-            }
-            return NO;
+    if (result != 0) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"PackageManager"
+                                         code:103
+                                     userInfo:@{NSLocalizedDescriptionKey: @"dpkg installation failed"}];
         }
-    } @catch (NSException *exception) {
-        NSLog(@"dpkg installation failed: %@", exception);
+        NSLog(@"dpkg installation failed with code %d", result);
         // Fall back to fake installation if dpkg is not available
         NSLog(@"Falling back to fake installation");
     }
@@ -261,30 +247,16 @@
     }
     
     // Use dpkg to actually uninstall the package
-    NSTask *task = [[NSTask alloc] init];
-    [task setLaunchPath:@"/usr/bin/dpkg"];
-    [task setArguments:@[@"-r", installedPackage.packageID]];
+    NSString *cmd = [NSString stringWithFormat:@"/usr/bin/dpkg -r '%@'", installedPackage.packageID];
+    int result = system([cmd UTF8String]);
     
-    NSPipe *pipe = [NSPipe pipe];
-    [task setStandardOutput:pipe];
-    [task setStandardError:pipe];
-    
-    @try {
-        [task launch];
-        [task waitUntilExit];
-        
-        if (task.terminationStatus != 0) {
-            if (error) {
-                NSData *data = [pipe.fileHandleForReading readDataToEndOfFile];
-                NSString *output = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-                *error = [NSError errorWithDomain:@"PackageManager" 
-                                             code:104 
-                                         userInfo:@{NSLocalizedDescriptionKey: output ?: @"dpkg uninstallation failed"}];
-            }
-            return NO;
+    if (result != 0) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"PackageManager"
+                                         code:104
+                                     userInfo:@{NSLocalizedDescriptionKey: @"dpkg uninstallation failed"}];
         }
-    } @catch (NSException *exception) {
-        NSLog(@"dpkg uninstallation failed: %@", exception);
+        NSLog(@"dpkg uninstallation failed with code %d", result);
         // Fall back to fake uninstallation if dpkg is not available
         NSLog(@"Falling back to fake uninstallation");
     }
