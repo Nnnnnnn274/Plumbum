@@ -118,10 +118,13 @@ static NSString * const kSourceCellID = @"SourceCell";
 - (void)configureWithRepository:(Repository *)repo {
     _iconImageView.image = [UIImage systemImageNamed:@"globe"];
     _nameLabel.text = repo.name;
-    _urlLabel.text = repo.url.host ?: repo.url.absoluteString;
-    _packageCountLabel.text = repo.packages.count > 0
-        ? [NSString stringWithFormat:@"%lu packages", (unsigned long)repo.packages.count]
-        : @"Loading…";
+    _urlLabel.text = repo.url;
+    _packageCountLabel.text = @"Loading...";
+    
+    // Add refresh button action
+    [_refreshButton removeTarget:nil action:nil forControlEvents:UIControlEventTouchUpInside];
+    [_refreshButton addTarget:self action:@selector(refreshRepository:) forControlEvents:UIControlEventTouchUpInside];
+    _refreshButton.tag = [_repositories indexOfObject:repo];
 }
 
 - (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated {
@@ -220,6 +223,39 @@ static NSString * const kSourceCellID = @"SourceCell";
     RepositoryManager *rm = [RepositoryManager sharedManager];
     _repositories = [rm.repositories mutableCopy];
     [_tableView reloadData];
+    
+    // Load packages for each repository
+    for (Repository *repo in _repositories) {
+        [self loadPackagesForRepository:repo];
+    }
+}
+
+- (void)loadPackagesForRepository:(Repository *)repo {
+    RepositoryManager *rm = [RepositoryManager sharedManager];
+    [rm packagesFromRepository:repo completion:^(NSArray<PlumbumPackage *> *packages, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            // Find the cell for this repository and update the package count
+            NSInteger index = [self->_repositories indexOfObject:repo];
+            if (index != NSNotFound) {
+                NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:0];
+                SourceCell *cell = [self->_tableView cellForRowAtIndexPath:indexPath];
+                if (cell) {
+                    cell.packageCountLabel.text = [NSString stringWithFormat:@"%ld packages", (long)packages.count];
+                }
+            }
+        });
+    }];
+}
+
+- (void)refreshRepository:(UIButton *)sender {
+    NSInteger index = sender.tag;
+    if (index >= (NSInteger)_repositories.count) return;
+    
+    Repository *repo = _repositories[index];
+    SourceCell *cell = (SourceCell *)sender.superview;
+    cell.packageCountLabel.text = @"Refreshing...";
+    
+    [self loadPackagesForRepository:repo];
 }
 
 - (void)addRepository {
@@ -238,17 +274,16 @@ static NSString * const kSourceCellID = @"SourceCell";
     UIAlertAction *add = [UIAlertAction actionWithTitle:@"Add" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         NSString *urlString = alert.textFields.firstObject.text;
         if (urlString.length > 0) {
-            NSURL *url = [NSURL URLWithString:urlString];
-            if (url) {
-                RepositoryManager *rm = [RepositoryManager sharedManager];
-                [rm addRepositoryWithURL:url completion:^(Repository *repo, NSError *error) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        if (repo) {
-                            [self->_repositories addObject:repo];
-                            [self->_tableView reloadData];
-                        }
-                    });
-                }];
+            Repository *repo = [[Repository alloc] init];
+            repo.url = urlString;
+            repo.name = urlString;
+            RepositoryManager *rm = [RepositoryManager sharedManager];
+            NSError *error = nil;
+            if ([rm addRepository:repo error:&error]) {
+                [self->_repositories addObject:repo];
+                [self->_tableView reloadData];
+                // Load packages for the new repository
+                [self loadPackagesForRepository:repo];
             }
         }
     }];

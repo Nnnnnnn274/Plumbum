@@ -119,7 +119,12 @@ static NSString * const kSourceCellID = @"SourceCell";
     _iconImageView.image = [UIImage systemImageNamed:@"globe"];
     _nameLabel.text = repo.name;
     _urlLabel.text = repo.url;
-    _packageCountLabel.text = @"";
+    _packageCountLabel.text = @"Loading...";
+    
+    // Add refresh button action
+    [_refreshButton removeTarget:nil action:nil forControlEvents:UIControlEventTouchUpInside];
+    [_refreshButton addTarget:self action:@selector(refreshRepository:) forControlEvents:UIControlEventTouchUpInside];
+    _refreshButton.tag = [_repositories indexOfObject:repo];
 }
 
 - (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated {
@@ -218,6 +223,39 @@ static NSString * const kSourceCellID = @"SourceCell";
     RepositoryManager *rm = [RepositoryManager sharedManager];
     _repositories = [rm.repositories mutableCopy];
     [_tableView reloadData];
+    
+    // Load packages for each repository
+    for (Repository *repo in _repositories) {
+        [self loadPackagesForRepository:repo];
+    }
+}
+
+- (void)loadPackagesForRepository:(Repository *)repo {
+    RepositoryManager *rm = [RepositoryManager sharedManager];
+    [rm packagesFromRepository:repo completion:^(NSArray<PlumbumPackage *> *packages, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            // Find the cell for this repository and update the package count
+            NSInteger index = [self->_repositories indexOfObject:repo];
+            if (index != NSNotFound) {
+                NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:0];
+                SourceCell *cell = [self->_tableView cellForRowAtIndexPath:indexPath];
+                if (cell) {
+                    cell.packageCountLabel.text = [NSString stringWithFormat:@"%ld packages", (long)packages.count];
+                }
+            }
+        });
+    }];
+}
+
+- (void)refreshRepository:(UIButton *)sender {
+    NSInteger index = sender.tag;
+    if (index >= (NSInteger)_repositories.count) return;
+    
+    Repository *repo = _repositories[index];
+    SourceCell *cell = (SourceCell *)sender.superview;
+    cell.packageCountLabel.text = @"Refreshing...";
+    
+    [self loadPackagesForRepository:repo];
 }
 
 - (void)addRepository {
@@ -244,6 +282,8 @@ static NSString * const kSourceCellID = @"SourceCell";
             if ([rm addRepository:repo error:&error]) {
                 [self->_repositories addObject:repo];
                 [self->_tableView reloadData];
+                // Load packages for the new repository
+                [self loadPackagesForRepository:repo];
             }
         }
     }];

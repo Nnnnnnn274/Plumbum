@@ -275,6 +275,12 @@ static NSString * const kTweakCellID = @"TweakCell";
     if (idx >= (NSInteger)_installedTweaks.count) return;
     NSDictionary *tweak = _installedTweaks[idx];
 
+    // Check if exploit has been run
+    if (!_exploitRun && ![[NSUserDefaults standardUserDefaults] boolForKey:@"ExploitRun"]) {
+        [self showAlert:@"Error" message:@"Please run the exploit first before installing tweaks"];
+        return;
+    }
+
     NSError *error = nil;
     BOOL success = NO;
 
@@ -282,9 +288,16 @@ static NSString * const kTweakCellID = @"TweakCell";
         MisakaPackageManager *mm = [[MisakaPackageManager alloc] init];
         success = [mm installMisakaPackage:tweak[@"path"] error:&error];
     } else {
-        PackageManager *pm = [[PackageManager alloc] init];
+        PackageManager *pm = [PackageManager sharedManager];
+        [pm createDirectoriesIfNeeded];
+        [pm loadInstalledPackages];
+        
         PlumbumPackage *pkg = [pm loadPackageFromPath:tweak[@"path"] error:&error];
-        if (pkg) success = [pm installPackage:pkg error:&error];
+        if (pkg) {
+            success = [pm installPackage:pkg error:&error];
+        } else {
+            success = NO;
+        }
     }
 
     if (success) {

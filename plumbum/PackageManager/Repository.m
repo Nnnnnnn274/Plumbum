@@ -109,8 +109,11 @@
         _packagesCache = [NSMutableDictionary dictionary];
         _repositoriesCache = [NSMutableArray array];
         
-        // Don't load repositories/cached packages in init to prevent panics before exploit
-        // They will be loaded on first access
+        // Load repositories and add defaults if needed
+        [self loadRepositories];
+        if (_repositoriesCache.count == 0) {
+            [self addDefaultRepositories];
+        }
     }
     return self;
 }
