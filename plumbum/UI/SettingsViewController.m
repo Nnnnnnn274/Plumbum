@@ -222,7 +222,6 @@ static NSString * const kSettingsCellID = @"SettingsCell";
     label.text = [_settingsSections[section][@"title"] uppercaseString];
     label.font = [UIFont systemFontOfSize:11 weight:UIFontWeightSemibold];
     label.textColor = [SileoColors tertiaryText];
-    label.letterSpacing = 0.8;
     [header addSubview:label];
     return header;
 }
