@@ -20,7 +20,8 @@ static NSString * const kSourceCellID = @"SourceCell";
 @property (nonatomic, strong) UILabel *urlLabel;
 @property (nonatomic, strong) UILabel *packageCountLabel;
 @property (nonatomic, strong) UIButton *refreshButton;
-- (void)configureWithRepository:(Repository *)repo;
+@property (nonatomic, weak) id<NSObject> refreshTarget;
+- (void)configureWithRepository:(Repository *)repo atIndex:(NSInteger)index;
 @end
 
 @implementation SourceCell {
@@ -115,7 +116,7 @@ static NSString * const kSourceCellID = @"SourceCell";
     ]];
 }
 
-- (void)configureWithRepository:(Repository *)repo {
+- (void)configureWithRepository:(Repository *)repo atIndex:(NSInteger)index {
     _iconImageView.image = [UIImage systemImageNamed:@"globe"];
     _nameLabel.text = repo.name;
     _urlLabel.text = repo.url;
@@ -123,8 +124,8 @@ static NSString * const kSourceCellID = @"SourceCell";
     
     // Add refresh button action
     [_refreshButton removeTarget:nil action:nil forControlEvents:UIControlEventTouchUpInside];
-    [_refreshButton addTarget:self action:@selector(refreshRepository:) forControlEvents:UIControlEventTouchUpInside];
-    _refreshButton.tag = [_repositories indexOfObject:repo];
+    [_refreshButton addTarget:_refreshTarget action:@selector(refreshRepository:) forControlEvents:UIControlEventTouchUpInside];
+    _refreshButton.tag = index;
 }
 
 - (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated {
@@ -301,7 +302,8 @@ static NSString * const kSourceCellID = @"SourceCell";
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     SourceCell *cell = [tableView dequeueReusableCellWithIdentifier:kSourceCellID forIndexPath:indexPath];
-    [cell configureWithRepository:_repositories[indexPath.row]];
+    cell.refreshTarget = self;
+    [cell configureWithRepository:_repositories[indexPath.row] atIndex:indexPath.row];
     return cell;
 }
 
