@@ -59,6 +59,10 @@ typedef NS_ENUM(NSInteger, PackageInstallStatus) {
 - (NSArray<PlumbumPackage *> *)installedPackages;
 - (void)saveInstalledPackages;
 
+// Directory management
+- (void)createDirectoriesIfNeeded;
+- (void)loadInstalledPackages;
+
 @end
 
 NS_ASSUME_NONNULL_END
