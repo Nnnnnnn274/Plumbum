@@ -20,9 +20,8 @@
     if (!self.window) {
         self.window = [[UIWindow alloc] initWithWindowScene:(UIWindowScene *)scene];
         
-        LogsViewController *logsViewController = [[LogsViewController alloc] init];
-        UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:logsViewController];
-        self.window.rootViewController = navController;
+        MainTabBarController *tabBarController = [[MainTabBarController alloc] init];
+        self.window.rootViewController = tabBarController;
         
         [self.window makeKeyAndVisible];
     }
