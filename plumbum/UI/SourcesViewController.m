@@ -2,14 +2,17 @@
 //  SourcesViewController.m
 //  plumbum
 //
-//  Created by seo on 6/7/26.
-//
 
 #import "SourcesViewController.h"
 #import "SileoColors.h"
 #import "../PackageManager/Repository.h"
 #import "PackageListViewController.h"
-#import <QuartzCore/QuartzCore.h>
+
+static NSString * const kSourceCellID = @"SourceCell";
+
+// ─────────────────────────────────────────────
+#pragma mark - SourceCell (private)
+// ─────────────────────────────────────────────
 
 @interface SourceCell : UITableViewCell
 @property (nonatomic, strong) UIImageView *iconImageView;
@@ -20,256 +23,269 @@
 - (void)configureWithRepository:(Repository *)repo;
 @end
 
-@implementation SourceCell
+@implementation SourceCell {
+    UIView *_cardView;
+}
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
     if (self) {
+        self.backgroundColor = [UIColor clearColor];
+        self.contentView.backgroundColor = [UIColor clearColor];
+        self.selectionStyle = UITableViewCellSelectionStyleNone;
         [self setupViews];
     }
     return self;
 }
 
 - (void)setupViews {
-    self.backgroundColor = [SileoColors cellBackgroundColor];
-    self.selectionStyle = UITableViewCellSelectionStyleNone;
-    
-    // Add subtle gradient background
-    CAGradientLayer *gradientLayer = [CAGradientLayer layer];
-    gradientLayer.frame = self.bounds;
-    gradientLayer.colors = @[
-        (id)[SileoColors secondaryBackground].CGColor,
-        (id)[SileoColors tertiaryBackground].CGColor
-    ];
-    gradientLayer.startPoint = CGPointMake(0, 0);
-    gradientLayer.endPoint = CGPointMake(1, 1);
-    gradientLayer.cornerRadius = 16;
-    [self.layer insertSublayer:gradientLayer atIndex:0];
-    
+    _cardView = [[UIView alloc] init];
+    _cardView.backgroundColor = [SileoColors secondaryBackground];
+    _cardView.layer.cornerRadius = 14;
+    _cardView.layer.masksToBounds = YES;
+    _cardView.layer.borderWidth = 0.5;
+    _cardView.layer.borderColor = [SileoColors borderColor].CGColor;
+    _cardView.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.contentView addSubview:_cardView];
+
     _iconImageView = [[UIImageView alloc] init];
     _iconImageView.contentMode = UIViewContentModeScaleAspectFit;
-    _iconImageView.layer.cornerRadius = 12;
+    _iconImageView.layer.cornerRadius = 10;
     _iconImageView.layer.masksToBounds = YES;
     _iconImageView.backgroundColor = [SileoColors tertiaryBackground];
-    _iconImageView.layer.borderWidth = 1;
-    _iconImageView.layer.borderColor = [SileoColors sileoBlue].CGColor;
+    _iconImageView.layer.borderWidth = 0.5;
+    _iconImageView.layer.borderColor = [SileoColors accentBorderColor].CGColor;
+    _iconImageView.tintColor = [SileoColors sileoBlue];
     _iconImageView.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.contentView addSubview:_iconImageView];
-    
+    [_cardView addSubview:_iconImageView];
+
     _nameLabel = [[UILabel alloc] init];
-    _nameLabel.font = [UIFont systemFontOfSize:17 weight:UIFontWeightBold];
+    _nameLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
     _nameLabel.textColor = [SileoColors primaryText];
     _nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.contentView addSubview:_nameLabel];
-    
+    [_cardView addSubview:_nameLabel];
+
     _urlLabel = [[UILabel alloc] init];
-    _urlLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+    _urlLabel.font = [UIFont monospacedSystemFontOfSize:11 weight:UIFontWeightRegular];
     _urlLabel.textColor = [SileoColors tertiaryText];
     _urlLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.contentView addSubview:_urlLabel];
-    
+    [_cardView addSubview:_urlLabel];
+
     _packageCountLabel = [[UILabel alloc] init];
     _packageCountLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold];
     _packageCountLabel.textColor = [SileoColors sileoBlue];
     _packageCountLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.contentView addSubview:_packageCountLabel];
-    
+    [_cardView addSubview:_packageCountLabel];
+
     _refreshButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [_refreshButton setImage:[UIImage systemImageNamed:@"arrow.clockwise"] forState:UIControlStateNormal];
     _refreshButton.tintColor = [SileoColors sileoBlue];
+    _refreshButton.backgroundColor = [SileoColors tertiaryBackground];
+    _refreshButton.layer.cornerRadius = 14;
     _refreshButton.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.contentView addSubview:_refreshButton];
-    
+    [_cardView addSubview:_refreshButton];
+
     [NSLayoutConstraint activateConstraints:@[
-        [_iconImageView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16],
-        [_iconImageView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
-        [_iconImageView.widthAnchor constraintEqualToConstant:50],
-        [_iconImageView.heightAnchor constraintEqualToConstant:50],
-        
+        [_cardView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:4],
+        [_cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-4],
+        [_cardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:12],
+        [_cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-12],
+
+        [_iconImageView.leadingAnchor constraintEqualToAnchor:_cardView.leadingAnchor constant:12],
+        [_iconImageView.centerYAnchor constraintEqualToAnchor:_cardView.centerYAnchor],
+        [_iconImageView.widthAnchor constraintEqualToConstant:44],
+        [_iconImageView.heightAnchor constraintEqualToConstant:44],
+
         [_nameLabel.leadingAnchor constraintEqualToAnchor:_iconImageView.trailingAnchor constant:12],
-        [_nameLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12],
+        [_nameLabel.topAnchor constraintEqualToAnchor:_cardView.topAnchor constant:12],
         [_nameLabel.trailingAnchor constraintEqualToAnchor:_refreshButton.leadingAnchor constant:-12],
-        
+
         [_urlLabel.leadingAnchor constraintEqualToAnchor:_nameLabel.leadingAnchor],
-        [_urlLabel.topAnchor constraintEqualToAnchor:_nameLabel.bottomAnchor constant:4],
+        [_urlLabel.topAnchor constraintEqualToAnchor:_nameLabel.bottomAnchor constant:3],
         [_urlLabel.trailingAnchor constraintEqualToAnchor:_nameLabel.trailingAnchor],
-        
+
         [_packageCountLabel.leadingAnchor constraintEqualToAnchor:_nameLabel.leadingAnchor],
-        [_packageCountLabel.topAnchor constraintEqualToAnchor:_urlLabel.bottomAnchor constant:4],
-        [_packageCountLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-12],
-        
-        [_refreshButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16],
-        [_refreshButton.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
-        [_refreshButton.widthAnchor constraintEqualToConstant:30],
-        [_refreshButton.heightAnchor constraintEqualToConstant:30]
+        [_packageCountLabel.topAnchor constraintEqualToAnchor:_urlLabel.bottomAnchor constant:3],
+        [_packageCountLabel.bottomAnchor constraintEqualToAnchor:_cardView.bottomAnchor constant:-12],
+
+        [_refreshButton.trailingAnchor constraintEqualToAnchor:_cardView.trailingAnchor constant:-12],
+        [_refreshButton.centerYAnchor constraintEqualToAnchor:_cardView.centerYAnchor],
+        [_refreshButton.widthAnchor constraintEqualToConstant:28],
+        [_refreshButton.heightAnchor constraintEqualToConstant:28],
     ]];
 }
 
 - (void)configureWithRepository:(Repository *)repo {
     _iconImageView.image = [UIImage systemImageNamed:@"globe"];
     _nameLabel.text = repo.name;
-    _urlLabel.text = repo.url;
-    _packageCountLabel.text = repo.repoDescription;
+    _urlLabel.text = repo.url.host ?: repo.url.absoluteString;
+    _packageCountLabel.text = repo.packages.count > 0
+        ? [NSString stringWithFormat:@"%lu packages", (unsigned long)repo.packages.count]
+        : @"Loading…";
+}
+
+- (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated {
+    [super setHighlighted:highlighted animated:animated];
+    [UIView animateWithDuration:0.1 animations:^{
+        self->_cardView.alpha = highlighted ? 0.6 : 1.0;
+    }];
 }
 
 @end
 
+// ─────────────────────────────────────────────
+#pragma mark - SourcesViewController
+// ─────────────────────────────────────────────
+
 @interface SourcesViewController ()
 @property (nonatomic, strong) UITableView *tableView;
-@property (nonatomic, strong) NSArray<Repository *> *repositories;
-@property (nonatomic, strong) RepositoryManager *repoManager;
+@property (nonatomic, strong) NSMutableArray<Repository *> *repositories;
+@property (nonatomic, strong) UISearchBar *searchBar;
 @end
 
 @implementation SourcesViewController
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    
     self.view.backgroundColor = [SileoColors background];
     self.title = @"Sources";
-    
-    _repoManager = [RepositoryManager sharedManager];
-    
-    [self setupTableView];
-    [self loadRepositories];
+    _repositories = [NSMutableArray array];
+    [self setupViews];
     [self configureNavigationBar];
+    [self loadRepositories];
 }
 
-- (void)setupTableView {
-    _tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
+- (void)setupViews {
+    // Search bar
+    _searchBar = [[UISearchBar alloc] init];
+    _searchBar.delegate = self;
+    _searchBar.placeholder = @"Search repos…";
+    _searchBar.searchBarStyle = UISearchBarStyleMinimal;
+    _searchBar.barTintColor = [SileoColors background];
+    _searchBar.backgroundColor = [SileoColors background];
+    _searchBar.tintColor = [SileoColors sileoBlue];
+
+    if (@available(iOS 13.0, *)) {
+        UITextField *tf = [_searchBar valueForKey:@"searchField"];
+        if (tf) {
+            tf.backgroundColor = [SileoColors tertiaryBackground];
+            tf.textColor = [SileoColors primaryText];
+            tf.attributedPlaceholder = [[NSAttributedString alloc]
+                initWithString:@"Search repos…"
+                    attributes:@{NSForegroundColorAttributeName: [SileoColors tertiaryText]}];
+        }
+    }
+
+    // Table view
+    _tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     _tableView.dataSource = self;
     _tableView.delegate = self;
     _tableView.backgroundColor = [SileoColors background];
     _tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    _tableView.contentInset = UIEdgeInsetsMake(0, 0, 16, 0);
     _tableView.translatesAutoresizingMaskIntoConstraints = NO;
-    
-    [_tableView registerClass:[SourceCell class] forCellReuseIdentifier:@"SourceCell"];
-    
+    [_tableView registerClass:[SourceCell class] forCellReuseIdentifier:kSourceCellID];
+    _tableView.tableHeaderView = _searchBar;
+
     [self.view addSubview:_tableView];
-    
     [NSLayoutConstraint activateConstraints:@[
         [_tableView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
         [_tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [_tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [_tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+        [_tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
     ]];
 }
 
 - (void)configureNavigationBar {
-    self.navigationController.navigationBar.tintColor = [SileoColors sileoBlue];
-    
-    UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addSource)];
-    UIBarButtonItem *refreshButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh target:self action:@selector(refreshAllSources)];
-    
-    self.navigationItem.rightBarButtonItems = @[addButton, refreshButton];
-    
     if (@available(iOS 13.0, *)) {
         UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
         [appearance configureWithOpaqueBackground];
         appearance.backgroundColor = [SileoColors background];
         appearance.titleTextAttributes = @{NSForegroundColorAttributeName: [SileoColors primaryText]};
-        
+        appearance.shadowColor = [SileoColors separatorColor];
         self.navigationController.navigationBar.standardAppearance = appearance;
         self.navigationController.navigationBar.scrollEdgeAppearance = appearance;
-    } else {
-        self.navigationController.navigationBar.barTintColor = [SileoColors background];
-        self.navigationController.navigationBar.titleTextAttributes = @{NSForegroundColorAttributeName: [SileoColors primaryText]};
     }
+    self.navigationController.navigationBar.tintColor = [SileoColors sileoBlue];
+
+    // Add repo button
+    UIBarButtonItem *addBtn = [[UIBarButtonItem alloc]
+        initWithBarButtonSystemItem:UIBarButtonSystemItemAdd
+                             target:self
+                             action:@selector(addRepository)];
+    self.navigationItem.rightBarButtonItem = addBtn;
 }
 
 - (void)loadRepositories {
-    // Add default repositories if none exist
-    if (_repoManager.repositories.count == 0) {
-        [_repoManager addDefaultRepositories];
-    }
-    
-    self.repositories = _repoManager.repositories;
+    RepositoryManager *rm = [RepositoryManager sharedManager];
+    _repositories = [rm.repositories mutableCopy];
     [_tableView reloadData];
 }
 
-- (void)addSource {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Add Source"
-                                                                   message:@"Enter repository URL"
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    
-    [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
-        textField.placeholder = @"https://example.com/";
+- (void)addRepository {
+    UIAlertController *alert = [UIAlertController
+        alertControllerWithTitle:@"Add Source"
+                         message:@"Enter the repository URL"
+                  preferredStyle:UIAlertControllerStyleAlert];
+
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
+        tf.placeholder = @"https://repo.example.com";
+        tf.keyboardType = UIKeyboardTypeURL;
+        tf.autocorrectionType = UITextAutocorrectionTypeNo;
+        tf.autocapitalizationType = UITextAutocapitalizationTypeNone;
     }];
-    
-    UIAlertAction *addAction = [UIAlertAction actionWithTitle:@"Add" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        UITextField *textField = alert.textFields.firstObject;
-        NSString *url = textField.text;
-        
-        if (url.length > 0) {
-            Repository *repo = [[Repository alloc] init];
-            repo.name = @"Custom Repository";
-            repo.url = url;
-            repo.repoDescription = @"Custom repository";
-            repo.trusted = NO;
-            
-            NSError *error = nil;
-            if ([self.repoManager addRepository:repo error:&error]) {
-                [self loadRepositories];
-            } else {
-                [self showErrorAlert:error];
+
+    UIAlertAction *add = [UIAlertAction actionWithTitle:@"Add" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        NSString *urlString = alert.textFields.firstObject.text;
+        if (urlString.length > 0) {
+            NSURL *url = [NSURL URLWithString:urlString];
+            if (url) {
+                RepositoryManager *rm = [RepositoryManager sharedManager];
+                [rm addRepositoryWithURL:url completion:^(Repository *repo, NSError *error) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        if (repo) {
+                            [self->_repositories addObject:repo];
+                            [self->_tableView reloadData];
+                        }
+                    });
+                }];
             }
         }
     }];
-    
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil];
-    
-    [alert addAction:addAction];
-    [alert addAction:cancelAction];
-    
-    [self presentViewController:alert animated:YES completion:nil];
-}
 
-- (void)refreshAllSources {
-    [self.repoManager refreshAllRepositories:^(BOOL success, NSError *error) {
-        if (success) {
-            [self loadRepositories];
-        } else {
-            [self showErrorAlert:error];
-        }
-    }];
-}
-
-- (void)showErrorAlert:(NSError *)error {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Error"
-                                                                   message:error.localizedDescription
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    
-    UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
-    [alert addAction:action];
-    
+    [alert addAction:add];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
 }
 
 #pragma mark - UITableViewDataSource
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return self.repositories.count;
+    return _repositories.count;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    SourceCell *cell = [tableView dequeueReusableCellWithIdentifier:@"SourceCell" forIndexPath:indexPath];
-    Repository *repo = self.repositories[indexPath.row];
-    [cell configureWithRepository:repo];
+    SourceCell *cell = [tableView dequeueReusableCellWithIdentifier:kSourceCellID forIndexPath:indexPath];
+    [cell configureWithRepository:_repositories[indexPath.row]];
     return cell;
 }
 
 #pragma mark - UITableViewDelegate
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    return 80;
+    return 82;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    Repository *repo = self.repositories[indexPath.row];
-    
-    // Open PackageListViewController for this repository
-    PackageListViewController *packageListVC = [[PackageListViewController alloc] initWithRepository:repo];
-    [self.navigationController pushViewController:packageListVC animated:YES];
+    Repository *repo = _repositories[indexPath.row];
+    PackageListViewController *pkgVC = [[PackageListViewController alloc] initWithRepository:repo];
+    [self.navigationController pushViewController:pkgVC animated:YES];
+}
+
+#pragma mark - UISearchBarDelegate
+
+- (void)searchBarSearchButtonClicked:(UISearchBar *)searchBar {
+    [searchBar resignFirstResponder];
 }
 
 @end

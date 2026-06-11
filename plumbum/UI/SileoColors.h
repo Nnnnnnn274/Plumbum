@@ -2,8 +2,6 @@
 //  SileoColors.h
 //  plumbum
 //
-//  Created by seo on 6/7/26.
-//
 
 #import <UIKit/UIKit.h>
 
@@ -11,7 +9,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface SileoColors : NSObject
 
-// Primary colors
+// Primary accent colors
 + (UIColor *)sileoBlue;
 + (UIColor *)sileoPurple;
 + (UIColor *)sileoGreen;
@@ -20,6 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (UIColor *)background;
 + (UIColor *)secondaryBackground;
 + (UIColor *)tertiaryBackground;
++ (UIColor *)quaternaryBackground;
 
 // Text colors
 + (UIColor *)primaryText;
@@ -35,6 +34,8 @@ NS_ASSUME_NONNULL_BEGIN
 + (UIColor *)separatorColor;
 + (UIColor *)cellBackgroundColor;
 + (UIColor *)selectedCellBackgroundColor;
++ (UIColor *)borderColor;
++ (UIColor *)accentBorderColor;
 
 @end
 

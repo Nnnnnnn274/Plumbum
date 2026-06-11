@@ -2,12 +2,129 @@
 //  SettingsViewController.m
 //  plumbum
 //
-//  Created by seo on 6/8/26.
-//
 
 #import "SettingsViewController.h"
 #import "SileoColors.h"
 #import "../PackageManager/Repository.h"
+
+static NSString * const kSettingsCellID = @"SettingsCell";
+
+@interface SettingsCell : UITableViewCell
+@end
+
+@implementation SettingsCell {
+    UIView *_cardView;
+    UILabel *_titleLabel;
+    UILabel *_valueLabel;
+    UIImageView *_chevron;
+    UISwitch *_toggle;
+}
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    if (self) {
+        self.backgroundColor = [UIColor clearColor];
+        self.contentView.backgroundColor = [UIColor clearColor];
+        self.selectionStyle = UITableViewCellSelectionStyleNone;
+
+        _cardView = [[UIView alloc] init];
+        _cardView.backgroundColor = [SileoColors secondaryBackground];
+        _cardView.translatesAutoresizingMaskIntoConstraints = NO;
+        [self.contentView addSubview:_cardView];
+
+        _titleLabel = [[UILabel alloc] init];
+        _titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
+        _titleLabel.textColor = [SileoColors primaryText];
+        _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        [_cardView addSubview:_titleLabel];
+
+        _valueLabel = [[UILabel alloc] init];
+        _valueLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightRegular];
+        _valueLabel.textColor = [SileoColors tertiaryText];
+        _valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        [_cardView addSubview:_valueLabel];
+
+        _chevron = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.right"]];
+        _chevron.tintColor = [SileoColors tertiaryText];
+        _chevron.contentMode = UIViewContentModeScaleAspectFit;
+        _chevron.hidden = YES;
+        _chevron.translatesAutoresizingMaskIntoConstraints = NO;
+        [_cardView addSubview:_chevron];
+
+        _toggle = [[UISwitch alloc] init];
+        _toggle.onTintColor = [SileoColors sileoBlue];
+        _toggle.hidden = YES;
+        _toggle.translatesAutoresizingMaskIntoConstraints = NO;
+        [_cardView addSubview:_toggle];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [_cardView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
+            [_cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
+            [_cardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
+            [_cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+
+            [_titleLabel.leadingAnchor constraintEqualToAnchor:_cardView.leadingAnchor constant:16],
+            [_titleLabel.centerYAnchor constraintEqualToAnchor:_cardView.centerYAnchor],
+
+            [_valueLabel.trailingAnchor constraintEqualToAnchor:_chevron.leadingAnchor constant:-6],
+            [_valueLabel.centerYAnchor constraintEqualToAnchor:_cardView.centerYAnchor],
+
+            [_chevron.trailingAnchor constraintEqualToAnchor:_cardView.trailingAnchor constant:-16],
+            [_chevron.centerYAnchor constraintEqualToAnchor:_cardView.centerYAnchor],
+            [_chevron.widthAnchor constraintEqualToConstant:12],
+            [_chevron.heightAnchor constraintEqualToConstant:16],
+
+            [_toggle.trailingAnchor constraintEqualToAnchor:_cardView.trailingAnchor constant:-16],
+            [_toggle.centerYAnchor constraintEqualToAnchor:_cardView.centerYAnchor],
+        ]];
+    }
+    return self;
+}
+
+- (void)configureWithItem:(NSDictionary *)item isFirst:(BOOL)isFirst isLast:(BOOL)isLast {
+    _titleLabel.text = item[@"title"];
+    _valueLabel.text = item[@"value"] ?: @"";
+    _chevron.hidden = YES;
+    _toggle.hidden = YES;
+
+    NSString *type = item[@"type"];
+    if ([type isEqualToString:@"navigation"]) {
+        _chevron.hidden = NO;
+        _titleLabel.textColor = [SileoColors primaryText];
+    } else if ([type isEqualToString:@"action"]) {
+        _titleLabel.textColor = [SileoColors sileoBlue];
+    } else if ([type isEqualToString:@"destructive"]) {
+        _titleLabel.textColor = [SileoColors errorColor];
+    } else if ([type isEqualToString:@"toggle"]) {
+        _toggle.hidden = NO;
+        _toggle.on = [item[@"value"] boolValue];
+    } else {
+        // info
+        _chevron.hidden = YES;
+        _valueLabel.text = item[@"value"] ?: @"";
+    }
+
+    // Rounded corners for first/last in group
+    UIRectCorner corners = 0;
+    if (isFirst && isLast) corners = UIRectCornerAllCorners;
+    else if (isFirst) corners = UIRectCornerTopLeft | UIRectCornerTopRight;
+    else if (isLast) corners = UIRectCornerBottomLeft | UIRectCornerBottomRight;
+
+    if (corners != 0) {
+        UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, UIScreen.mainScreen.bounds.size.width - 32, 44)
+                                                   byRoundingCorners:corners
+                                                         cornerRadii:CGSizeMake(14, 14)];
+        CAShapeLayer *mask = [CAShapeLayer layer];
+        mask.path = path.CGPath;
+        _cardView.layer.mask = mask;
+    } else {
+        _cardView.layer.mask = nil;
+    }
+}
+
+@end
+
+// ─────────────────────────────────────────────
 
 @interface SettingsViewController ()
 @property (nonatomic, strong) UITableView *tableView;
@@ -18,66 +135,66 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    
     self.view.backgroundColor = [SileoColors background];
     self.title = @"Settings";
-    
-    [self setupTableView];
     [self loadSettings];
+    [self setupTableView];
+    [self configureNavigationBar];
 }
 
 - (void)setupTableView {
-    _tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStyleGrouped];
+    _tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleGrouped];
     _tableView.dataSource = self;
     _tableView.delegate = self;
     _tableView.backgroundColor = [SileoColors background];
-    _tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    _tableView.separatorStyle = UITableViewCellSeparatorStyleSingleLine;
+    _tableView.separatorColor = [SileoColors separatorColor];
+    _tableView.separatorInset = UIEdgeInsetsMake(0, 16, 0, 0);
     _tableView.translatesAutoresizingMaskIntoConstraints = NO;
-    
+    [_tableView registerClass:[SettingsCell class] forCellReuseIdentifier:kSettingsCellID];
+
     [self.view addSubview:_tableView];
-    
     [NSLayoutConstraint activateConstraints:@[
         [_tableView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [_tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [_tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [_tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+        [_tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
     ]];
 }
 
 - (void)loadSettings {
     _settingsSections = @[
-        @{
-            @"title": @"About",
-            @"items": @[
-                @{@"title": @"Version", @"value": @"1.0.0", @"type": @"info"},
-                @{@"title": @"Build", @"value": @"Release", @"type": @"info"},
-                @{@"title": @"Developer", @"value": @"seo", @"type": @"info"}
-            ]
-        },
-        @{
-            @"title": @"Repositories",
-            @"items": @[
-                @{@"title": @"Manage Repositories", @"type": @"navigation"},
-                @{@"title": @"Refresh All", @"type": @"action"}
-            ]
-        },
-        @{
-            @"title": @"Appearance",
-            @"items": @[
-                @{@"title": @"Dark Mode", @"type": @"toggle", @"value": @YES},
-                @{@"title": @"Accent Color", @"type": @"navigation"}
-            ]
-        },
-        @{
-            @"title": @"Advanced",
-            @"items": @[
-                @{@"title": @"Clear Cache", @"type": @"action"},
-                @{@"title": @"Reset Settings", @"type": @"destructive"}
-            ]
-        }
+        @{ @"title": @"About", @"items": @[
+            @{@"title": @"Version", @"value": @"1.0.0", @"type": @"info"},
+            @{@"title": @"Build",   @"value": @"Release", @"type": @"info"},
+            @{@"title": @"Developer", @"value": @"seo",   @"type": @"info"},
+        ]},
+        @{ @"title": @"Repositories", @"items": @[
+            @{@"title": @"Manage Repositories", @"type": @"navigation"},
+            @{@"title": @"Refresh All",          @"type": @"action"},
+        ]},
+        @{ @"title": @"Appearance", @"items": @[
+            @{@"title": @"Dark Mode",    @"type": @"toggle", @"value": @YES},
+            @{@"title": @"Accent Color", @"type": @"navigation"},
+        ]},
+        @{ @"title": @"Advanced", @"items": @[
+            @{@"title": @"Clear Cache",    @"type": @"action"},
+            @{@"title": @"Reset Settings", @"type": @"destructive"},
+        ]},
     ];
-    
-    [_tableView reloadData];
+}
+
+- (void)configureNavigationBar {
+    if (@available(iOS 13.0, *)) {
+        UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
+        [appearance configureWithOpaqueBackground];
+        appearance.backgroundColor = [SileoColors background];
+        appearance.titleTextAttributes = @{NSForegroundColorAttributeName: [SileoColors primaryText]};
+        appearance.shadowColor = [SileoColors separatorColor];
+        self.navigationController.navigationBar.standardAppearance = appearance;
+        self.navigationController.navigationBar.scrollEdgeAppearance = appearance;
+    }
+    self.navigationController.navigationBar.tintColor = [SileoColors sileoBlue];
 }
 
 #pragma mark - UITableViewDataSource
@@ -90,142 +207,32 @@
     return [_settingsSections[section][@"items"] count];
 }
 
-- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    return _settingsSections[section][@"title"];
-}
-
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    static NSString *cellIdentifier = @"SettingsCell";
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellIdentifier];
-    
-    if (!cell) {
-        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:cellIdentifier];
-        cell.backgroundColor = [SileoColors secondaryBackground];
-        cell.textLabel.textColor = [SileoColors primaryText];
-        cell.detailTextLabel.textColor = [SileoColors tertiaryText];
-        cell.selectedBackgroundView = [[UIView alloc] init];
-        cell.selectedBackgroundView.backgroundColor = [SileoColors tertiaryBackground];
-    }
-    
-    NSDictionary *item = _settingsSections[indexPath.section][@"items"][indexPath.row];
-    cell.textLabel.text = item[@"title"];
-    
-    NSString *type = item[@"type"];
-    if ([type isEqualToString:@"info"]) {
-        cell.detailTextLabel.text = item[@"value"];
-        cell.accessoryType = UITableViewCellAccessoryNone;
-        cell.selectionStyle = UITableViewCellSelectionStyleNone;
-    } else if ([type isEqualToString:@"navigation"]) {
-        cell.detailTextLabel.text = nil;
-        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-        cell.selectionStyle = UITableViewCellSelectionStyleDefault;
-    } else if ([type isEqualToString:@"action"]) {
-        cell.detailTextLabel.text = nil;
-        cell.accessoryType = UITableViewCellAccessoryNone;
-        cell.selectionStyle = UITableViewCellSelectionStyleDefault;
-    } else if ([type isEqualToString:@"toggle"]) {
-        cell.detailTextLabel.text = nil;
-        UISwitch *toggle = [[UISwitch alloc] init];
-        toggle.onTintColor = [SileoColors sileoBlue];
-        [toggle setOn:[item[@"value"] boolValue] animated:NO];
-        toggle.tag = indexPath.row;
-        [toggle addTarget:self action:@selector(toggleChanged:) forControlEvents:UIControlEventValueChanged];
-        cell.accessoryView = toggle;
-        cell.selectionStyle = UITableViewCellSelectionStyleNone;
-    } else if ([type isEqualToString:@"destructive"]) {
-        cell.detailTextLabel.text = nil;
-        cell.accessoryType = UITableViewCellAccessoryNone;
-        cell.textLabel.textColor = [UIColor redColor];
-        cell.selectionStyle = UITableViewCellSelectionStyleDefault;
-    }
-    
+    SettingsCell *cell = [tableView dequeueReusableCellWithIdentifier:kSettingsCellID forIndexPath:indexPath];
+    NSArray *items = _settingsSections[indexPath.section][@"items"];
+    BOOL isFirst = indexPath.row == 0;
+    BOOL isLast = indexPath.row == (NSInteger)items.count - 1;
+    [cell configureWithItem:items[indexPath.row] isFirst:isFirst isLast:isLast];
     return cell;
 }
 
-#pragma mark - UITableViewDelegate
-
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    
-    NSDictionary *item = _settingsSections[indexPath.section][@"items"][indexPath.row];
-    NSString *type = item[@"type"];
-    
-    if ([type isEqualToString:@"action"]) {
-        NSString *title = item[@"title"];
-        if ([title isEqualToString:@"Refresh All"]) {
-            [self refreshAllRepositories];
-        } else if ([title isEqualToString:@"Clear Cache"]) {
-            [self clearCache];
-        } else if ([title isEqualToString:@"Reset Settings"]) {
-            [self resetSettings];
-        }
-    }
+- (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
+    UIView *header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, tableView.bounds.size.width, 32)];
+    UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(16, 8, tableView.bounds.size.width - 32, 20)];
+    label.text = [_settingsSections[section][@"title"] uppercaseString];
+    label.font = [UIFont systemFontOfSize:11 weight:UIFontWeightSemibold];
+    label.textColor = [SileoColors tertiaryText];
+    label.letterSpacing = 0.8;
+    [header addSubview:label];
+    return header;
 }
 
-- (void)toggleChanged:(UISwitch *)sender {
-    // Handle toggle changes
-    NSLog(@"Toggle changed: %ld", (long)sender.tag);
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
+    return 36;
 }
 
-- (void)refreshAllRepositories {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Refresh All"
-                                                                   message:@"Refreshing all repositories..."
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [self presentViewController:alert animated:YES completion:^{
-        RepositoryManager *manager = [RepositoryManager sharedManager];
-        [manager refreshAllRepositories:^(BOOL success, NSError *error) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [alert dismissViewControllerAnimated:YES completion:^{
-                    if (success) {
-                        UIAlertController *successAlert = [UIAlertController alertControllerWithTitle:@"Success"
-                                                                                           message:@"All repositories refreshed"
-                                                                                    preferredStyle:UIAlertControllerStyleAlert];
-                        UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
-                        [successAlert addAction:action];
-                        [self presentViewController:successAlert animated:YES completion:nil];
-                    } else {
-                        UIAlertController *errorAlert = [UIAlertController alertControllerWithTitle:@"Error"
-                                                                                          message:error.localizedDescription
-                                                                                   preferredStyle:UIAlertControllerStyleAlert];
-                        UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
-                        [errorAlert addAction:action];
-                        [self presentViewController:errorAlert animated:YES completion:nil];
-                    }
-                }];
-            });
-        }];
-    }];
-}
-
-- (void)clearCache {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Clear Cache"
-                                                                   message:@"Cache cleared"
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
-    [alert addAction:action];
-    [self presentViewController:alert animated:YES completion:nil];
-}
-
-- (void)resetSettings {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Reset Settings"
-                                                                   message:@"Are you sure you want to reset all settings?"
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    
-    UIAlertAction *confirmAction = [UIAlertAction actionWithTitle:@"Reset" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
-        UIAlertController *successAlert = [UIAlertController alertControllerWithTitle:@"Reset Complete"
-                                                                              message:@"Settings have been reset"
-                                                                       preferredStyle:UIAlertControllerStyleAlert];
-        UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
-        [successAlert addAction:okAction];
-        [self presentViewController:successAlert animated:YES completion:nil];
-    }];
-    
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil];
-    
-    [alert addAction:confirmAction];
-    [alert addAction:cancelAction];
-    
-    [self presentViewController:alert animated:YES completion:nil];
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
+    return 44;
 }
 
 @end

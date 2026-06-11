@@ -100,6 +100,7 @@
     _refreshControl.tintColor = [SileoColors sileoBlue];
     [_refreshControl addTarget:self action:@selector(refreshPackages) forControlEvents:UIControlEventValueChanged];
     _tableView.refreshControl = _refreshControl;
+    _tableView.contentInset = UIEdgeInsetsMake(0, 0, 16, 0);
     
     [self.view addSubview:_tableView];
     
@@ -124,7 +125,7 @@
         if (searchTextField) {
             searchTextField.backgroundColor = [SileoColors secondaryBackground];
             searchTextField.textColor = [SileoColors primaryText];
-            searchTextField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:@"Search packages" attributes:@{NSForegroundColorAttributeName: [SileoColors tertiaryText]}];
+            searchTextField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:@"Search packages…" attributes:@{NSForegroundColorAttributeName: [SileoColors tertiaryText]}];
         }
     }
     
@@ -143,7 +144,7 @@
     _loadingLabel = [[UILabel alloc] init];
     _loadingLabel.text = @"Loading packages...";
     _loadingLabel.textColor = [SileoColors primaryText];
-    _loadingLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+    _loadingLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
     _loadingLabel.textAlignment = NSTextAlignmentCenter;
     _loadingLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _loadingLabel.hidden = YES;
@@ -169,6 +170,7 @@
         appearance.backgroundColor = [SileoColors background];
         appearance.titleTextAttributes = @{NSForegroundColorAttributeName: [SileoColors primaryText]};
         appearance.largeTitleTextAttributes = @{NSForegroundColorAttributeName: [SileoColors primaryText]};
+        appearance.shadowColor = [SileoColors separatorColor];
         
         self.navigationController.navigationBar.standardAppearance = appearance;
         self.navigationController.navigationBar.scrollEdgeAppearance = appearance;
