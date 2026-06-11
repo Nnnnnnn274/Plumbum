@@ -127,6 +127,9 @@ static NSString * const kSettingsCellID = @"SettingsCell";
 // ─────────────────────────────────────────────
 
 @interface SettingsViewController ()
+@property (nonatomic, strong) UIView *headerView;
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UILabel *subtitleLabel;
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSArray<NSDictionary *> *settingsSections;
 @end
@@ -138,8 +141,45 @@ static NSString * const kSettingsCellID = @"SettingsCell";
     self.view.backgroundColor = [SileoColors background];
     self.title = @"Settings";
     [self loadSettings];
+    [self setupHeaderView];
     [self setupTableView];
     [self configureNavigationBar];
+}
+
+- (void)setupHeaderView {
+    _headerView = [[UIView alloc] init];
+    _headerView.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:_headerView];
+
+    _titleLabel = [[UILabel alloc] init];
+    _titleLabel.text = @"Settings";
+    _titleLabel.numberOfLines = 2;
+    _titleLabel.font = [UIFont systemFontOfSize:34 weight:UIFontWeightBold];
+    _titleLabel.textColor = [SileoColors primaryText];
+    _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [_headerView addSubview:_titleLabel];
+
+    _subtitleLabel = [[UILabel alloc] init];
+    _subtitleLabel.text = @"Configure your preferences";
+    _subtitleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    _subtitleLabel.textColor = [SileoColors secondaryText];
+    _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [_headerView addSubview:_subtitleLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [_headerView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:20],
+        [_headerView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:20],
+        [_headerView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20],
+        [_headerView.heightAnchor constraintEqualToConstant:80],
+
+        [_titleLabel.topAnchor constraintEqualToAnchor:_headerView.topAnchor],
+        [_titleLabel.leadingAnchor constraintEqualToAnchor:_headerView.leadingAnchor],
+        [_titleLabel.trailingAnchor constraintEqualToAnchor:_headerView.trailingAnchor],
+
+        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:8],
+        [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_headerView.leadingAnchor],
+        [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_headerView.trailingAnchor],
+    ]];
 }
 
 - (void)setupTableView {
@@ -147,18 +187,16 @@ static NSString * const kSettingsCellID = @"SettingsCell";
     _tableView.dataSource = self;
     _tableView.delegate = self;
     _tableView.backgroundColor = [SileoColors background];
-    _tableView.separatorStyle = UITableViewCellSeparatorStyleSingleLine;
-    _tableView.separatorColor = [SileoColors separatorColor];
-    _tableView.separatorInset = UIEdgeInsetsMake(0, 16, 0, 0);
+    _tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     _tableView.translatesAutoresizingMaskIntoConstraints = NO;
     [_tableView registerClass:[SettingsCell class] forCellReuseIdentifier:kSettingsCellID];
 
     [self.view addSubview:_tableView];
     [NSLayoutConstraint activateConstraints:@[
-        [_tableView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [_tableView.topAnchor constraintEqualToAnchor:_headerView.bottomAnchor constant:20],
         [_tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [_tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [_tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+        [_tableView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],
     ]];
 }
 
