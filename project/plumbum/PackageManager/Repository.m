@@ -331,6 +331,8 @@
             return;
         }
         
+        NSLog(@"Successfully downloaded %lu bytes from %@", (unsigned long)data.length, packagesURL);
+        
         NSArray *parsedPackages = nil;
         
         // Check if it's a JSON file
@@ -342,6 +344,7 @@
                 completion(@[], jsonError);
                 return;
             }
+            NSLog(@"Successfully parsed JSON, calling parseMisakaJSON");
             parsedPackages = [self parseMisakaJSON:jsonDict];
         } else {
             // Parse as Debian-style Packages file
@@ -349,9 +352,13 @@
             parsedPackages = [self parsePackagesFile:packagesContent];
         }
         
+        NSLog(@"Parsed %ld packages total", (long)parsedPackages.count);
+        
         if (parsedPackages.count > 0) {
             // Auto-port packages that need exploits
             NSArray *autoPortedPackages = [self autoPortPackages:parsedPackages fromRepository:repo];
+            
+            NSLog(@"Auto-ported %ld packages", (long)autoPortedPackages.count);
             
             // Cache the packages
             self->_packagesCache[repo.url] = autoPortedPackages;
@@ -359,6 +366,7 @@
             
             completion(autoPortedPackages, nil);
         } else {
+            NSLog(@"No packages found, returning empty array");
             completion(@[], nil);
         }
     }];
@@ -423,11 +431,15 @@
 - (NSArray *)parseMisakaJSON:(NSDictionary *)jsonDict {
     NSMutableArray *packages = [NSMutableArray array];
     
+    NSLog(@"Parsing Misaka JSON with keys: %@", jsonDict.allKeys);
+    
     NSArray *repositoryContents = jsonDict[@"RepositoryContents"];
     if (!repositoryContents || ![repositoryContents isKindOfClass:[NSArray class]]) {
         NSLog(@"Invalid Misaka JSON format: missing RepositoryContents");
         return [packages copy];
     }
+    
+    NSLog(@"Found %ld packages in RepositoryContents", (long)repositoryContents.count);
     
     for (NSDictionary *packageDict in repositoryContents) {
         @autoreleasepool {
@@ -470,6 +482,7 @@
             PlumbumPackage *package = [[PlumbumPackage alloc] initWithDictionary:pkgDict];
             if (package) {
                 [packages addObject:package];
+                NSLog(@"Added package: %@", package.name);
             }
         }
     }
