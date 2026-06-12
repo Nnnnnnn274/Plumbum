@@ -9,6 +9,8 @@
 #import <sys/stat.h>
 #import <sys/types.h>
 #import <unistd.h>
+#import <spawn.h>
+#import <sys/wait.h>
 
 @implementation PlumbumPackage
 
@@ -206,8 +208,15 @@
     
     // Use dpkg to actually install the package
     // This requires root/sandbox escape which should be available after exploit
-    NSString *cmd = [NSString stringWithFormat:@"/usr/bin/dpkg -i '%@'", destPath];
-    int result = system([cmd UTF8String]);
+    pid_t pid;
+    const char *argv[] = {"/usr/bin/dpkg", "-i", [destPath UTF8String], NULL};
+    int result = posix_spawn(&pid, "/usr/bin/dpkg", NULL, NULL, (char *const *)argv, NULL);
+    
+    if (result == 0) {
+        int status;
+        waitpid(pid, &status, 0);
+        result = WEXITSTATUS(status);
+    }
     
     if (result != 0) {
         if (error) {
@@ -247,8 +256,15 @@
     }
     
     // Use dpkg to actually uninstall the package
-    NSString *cmd = [NSString stringWithFormat:@"/usr/bin/dpkg -r '%@'", installedPackage.packageID];
-    int result = system([cmd UTF8String]);
+    pid_t pid;
+    const char *argv[] = {"/usr/bin/dpkg", "-r", [installedPackage.packageID UTF8String], NULL};
+    int result = posix_spawn(&pid, "/usr/bin/dpkg", NULL, NULL, (char *const *)argv, NULL);
+    
+    if (result == 0) {
+        int status;
+        waitpid(pid, &status, 0);
+        result = WEXITSTATUS(status);
+    }
     
     if (result != 0) {
         if (error) {
