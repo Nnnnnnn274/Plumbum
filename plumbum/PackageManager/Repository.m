@@ -76,6 +76,10 @@
         if (_components && _components.count > 0) {
             baseURL = [baseURL stringByAppendingPathComponent:_components.firstObject];
         }
+        // If no distribution or components, fall back to native-style path
+        if (!_distribution && (!_components || _components.count == 0)) {
+            return [_url stringByAppendingPathComponent:@"Packages"];
+        }
         return [baseURL stringByAppendingPathComponent:@"binary-iphoneos-arm/Packages"];
     }
 }
@@ -114,6 +118,10 @@
         if (_repositoriesCache.count == 0) {
             [self addDefaultRepositories];
         }
+        
+        // Clear package cache to force re-fetching with updated repository types
+        [_packagesCache removeAllObjects];
+        [self saveCachedPackages];
     }
     return self;
 }
@@ -318,8 +326,23 @@
             return;
         }
         
-        NSString *packagesContent = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-        NSArray *parsedPackages = [self parsePackagesFile:packagesContent];
+        NSArray *parsedPackages = nil;
+        
+        // Check if it's a JSON file
+        if ([packagesURL hasSuffix:@".json"]) {
+            NSError *jsonError = nil;
+            NSDictionary *jsonDict = [NSJSONSerialization JSONObjectWithData:data options:0 error:&jsonError];
+            if (jsonError) {
+                NSLog(@"Failed to parse JSON from %@: %@", packagesURL, jsonError.localizedDescription);
+                completion(@[], jsonError);
+                return;
+            }
+            parsedPackages = [self parseMisakaJSON:jsonDict];
+        } else {
+            // Parse as Debian-style Packages file
+            NSString *packagesContent = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+            parsedPackages = [self parsePackagesFile:packagesContent];
+        }
         
         if (parsedPackages.count > 0) {
             // Auto-port packages that need exploits
@@ -390,6 +413,61 @@
     }
     
     return packages;
+}
+
+- (NSArray *)parseMisakaJSON:(NSDictionary *)jsonDict {
+    NSMutableArray *packages = [NSMutableArray array];
+    
+    NSArray *repositoryContents = jsonDict[@"RepositoryContents"];
+    if (!repositoryContents || ![repositoryContents isKindOfClass:[NSArray class]]) {
+        NSLog(@"Invalid Misaka JSON format: missing RepositoryContents");
+        return [packages copy];
+    }
+    
+    for (NSDictionary *packageDict in repositoryContents) {
+        @autoreleasepool {
+            NSMutableDictionary *pkgDict = [NSMutableDictionary dictionary];
+            
+            // Map Misaka JSON fields to PlumbumPackage fields
+            pkgDict[@"Package"] = packageDict[@"PackageID"] ?: @"";
+            pkgDict[@"Name"] = packageDict[@"Name"] ?: packageDict[@"PackageID"] ?: @"";
+            pkgDict[@"Description"] = packageDict[@"Description"] ?: @"";
+            
+            // Get the latest release
+            NSArray *releases = packageDict[@"Releases"];
+            if (releases && releases.count > 0) {
+                NSDictionary *latestRelease = releases.firstObject;
+                pkgDict[@"Version"] = latestRelease[@"Version"] ?: @"1.0";
+                pkgDict[@"Filename"] = latestRelease[@"Package"] ?: @"";
+            } else {
+                pkgDict[@"Version"] = @"1.0";
+            }
+            
+            // Author info
+            NSDictionary *authorDict = packageDict[@"Author"];
+            if (authorDict) {
+                pkgDict[@"Author"] = authorDict[@"Label"] ?: @"";
+            }
+            
+            // Section/Category
+            pkgDict[@"Section"] = packageDict[@"Category"] ?: @"Utilities";
+            
+            // Additional metadata
+            pkgDict[@"MinIOSVersion"] = packageDict[@"MinIOSVersion"] ?: @"";
+            pkgDict[@"CompatibleExploit"] = packageDict[@"compatibleExploit"] ?: @[];
+            
+            // Icon
+            pkgDict[@"Icon"] = packageDict[@"Icon"] ?: @"";
+            
+            PlumbumPackage *package = [[PlumbumPackage alloc] initWithDictionary:pkgDict];
+            if (package) {
+                [packages addObject:package];
+            }
+        }
+    }
+    
+    NSLog(@"Parsed %ld packages from Misaka JSON", (long)packages.count);
+    return [packages copy];
 }
 
 - (NSArray *)parsePackagesFile:(NSString *)content {
@@ -519,24 +597,10 @@
 - (void)addDefaultRepositories {
     NSArray *defaultRepos = @[
         @{
-            @"name": @"Misaka",
-            @"url": @"https://repo.misaka.app/",
+            @"name": @"Misaka Network",
+            @"url": @"https://raw.githubusercontent.com/shimajiron/Misaka_Network/main/repo.json",
             @"description": @"Official Misaka repository",
-            @"type": @"standard",
-            @"trusted": @YES
-        },
-        @{
-            @"name": @"Misaka Alt",
-            @"url": @"https://misaka.jailbreaks.app/",
-            @"description": @"Alternative Misaka repository",
-            @"type": @"standard",
-            @"trusted": @YES
-        },
-        @{
-            @"name": @"PoomSmart",
-            @"url": @"https://poomsmart.github.io/repo/",
-            @"description": @"PoomSmart's repository",
-            @"type": @"standard",
+            @"type": @"native",
             @"trusted": @YES
         }
     ];
