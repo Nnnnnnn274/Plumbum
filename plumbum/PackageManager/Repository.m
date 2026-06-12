@@ -63,6 +63,11 @@
 }
 
 - (NSString *)packagesURL {
+    // If URL already ends with .json, it's the packages file itself
+    if ([_url hasSuffix:@".json"]) {
+        return _url;
+    }
+    
     // Construct URL to Packages file
     if (_type == RepositoryTypeNative) {
         // Native repos typically have Packages at root
