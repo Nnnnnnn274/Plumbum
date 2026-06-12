@@ -31,6 +31,12 @@ typedef NS_ENUM(NSInteger, PackageInstallStatus) {
 @property (nonatomic, assign) PackageInstallStatus installStatus;
 @property (nonatomic, strong) NSDate *installDate;
 @property (nonatomic, strong) NSString *installedVersion;
+@property (nonatomic, strong) NSString *packageType; // "deb" or "misaka"
+@property (nonatomic, strong) NSString *filename; // Download URL for the package file
+@property (nonatomic, strong) NSString *minIOSVersion;
+@property (nonatomic, strong) NSString *maxIOSVersion;
+@property (nonatomic, strong) NSArray<NSString *> *compatibleExploit;
+@property (nonatomic, strong) NSString *icon;
 
 - (instancetype)initWithDictionary:(NSDictionary *)dict;
 - (NSDictionary *)toDictionary;

@@ -42,6 +42,14 @@
             _dependencies = @[];
         }
         
+        // New properties for Misaka packages
+        _packageType = dict[@"PackageType"] ?: @"deb";
+        _filename = dict[@"Filename"] ?: @"";
+        _minIOSVersion = dict[@"MinIOSVersion"] ?: @"";
+        _maxIOSVersion = dict[@"MaxIOSVersion"] ?: @"";
+        _compatibleExploit = dict[@"CompatibleExploit"] ?: @[];
+        _icon = dict[@"Icon"] ?: @"";
+        
         _installStatus = PackageInstallStatusNotInstalled;
     }
     return self;
@@ -59,6 +67,14 @@
     if (_architecture) dict[@"Architecture"] = _architecture;
     if (_maintainer) dict[@"Maintainer"] = _maintainer;
     if (_dependencies.count > 0) dict[@"Depends"] = _dependencies;
+    
+    // New properties for Misaka packages
+    if (_packageType) dict[@"PackageType"] = _packageType;
+    if (_filename) dict[@"Filename"] = _filename;
+    if (_minIOSVersion) dict[@"MinIOSVersion"] = _minIOSVersion;
+    if (_maxIOSVersion) dict[@"MaxIOSVersion"] = _maxIOSVersion;
+    if (_compatibleExploit.count > 0) dict[@"CompatibleExploit"] = _compatibleExploit;
+    if (_icon) dict[@"Icon"] = _icon;
     
     return [dict copy];
 }
@@ -148,7 +164,50 @@
 #pragma mark - Package Operations
 
 - (BOOL)installPackage:(PlumbumPackage *)package error:(NSError **)error {
-    if (!package.filePath) {
+    NSFileManager *fm = [NSFileManager defaultManager];
+    NSString *packageFilePath = package.filePath;
+    
+    // For Misaka packages, download from URL if filePath is not set
+    if ([package.packageType isEqualToString:@"misaka"] && package.filename && package.filename.length > 0) {
+        if (!packageFilePath || ![fm fileExistsAtPath:packageFilePath]) {
+            // Download the .misaka file from the URL
+            NSURL *url = [NSURL URLWithString:package.filename];
+            if (!url) {
+                if (error) {
+                    *error = [NSError errorWithDomain:@"PackageManager"
+                                                 code:100
+                                             userInfo:@{NSLocalizedDescriptionKey: @"Invalid package URL"}];
+                }
+                return NO;
+            }
+            
+            NSData *data = [NSData dataWithContentsOfURL:url];
+            if (!data) {
+                if (error) {
+                    *error = [NSError errorWithDomain:@"PackageManager"
+                                                 code:101
+                                             userInfo:@{NSLocalizedDescriptionKey: @"Failed to download package"}];
+                }
+                return NO;
+            }
+            
+            // Save to temp directory
+            NSString *tempDir = [NSTemporaryDirectory() stringByAppendingPathComponent:@"plumbum_downloads"];
+            [fm createDirectoryAtPath:tempDir withIntermediateDirectories:YES attributes:nil error:nil];
+            
+            NSString *fileName = [package.filename lastPathComponent];
+            if (!fileName || [fileName length] == 0) {
+                fileName = [NSString stringWithFormat:@"%@.misaka", package.packageID];
+            }
+            
+            packageFilePath = [tempDir stringByAppendingPathComponent:fileName];
+            [data writeToFile:packageFilePath atomically:YES];
+            
+            NSLog(@"Downloaded .misaka package to %@", packageFilePath);
+        }
+    }
+    
+    if (!packageFilePath) {
         if (error) {
             *error = [NSError errorWithDomain:@"PackageManager" 
                                          code:100 
@@ -157,8 +216,7 @@
         return NO;
     }
     
-    NSFileManager *fm = [NSFileManager defaultManager];
-    if (![fm fileExistsAtPath:package.filePath]) {
+    if (![fm fileExistsAtPath:packageFilePath]) {
         if (error) {
             *error = [NSError errorWithDomain:@"PackageManager" 
                                          code:101 
@@ -167,20 +225,52 @@
         return NO;
     }
     
+    // For .misaka files, skip dpkg and just copy the file
+    if ([package.packageType isEqualToString:@"misaka"]) {
+        NSString *installDir = [_packagesDirectory stringByAppendingPathComponent:@"installed"];
+        NSString *packageDir = [installDir stringByAppendingPathComponent:package.packageID];
+        
+        if ([fm fileExistsAtPath:packageDir]) {
+            [fm removeItemAtPath:packageDir error:nil];
+        }
+        
+        [fm createDirectoryAtPath:packageDir withIntermediateDirectories:YES attributes:nil error:nil];
+        
+        // Copy .misaka file to installed directory
+        NSString *destPath = [packageDir stringByAppendingPathComponent:[packageFilePath lastPathComponent]];
+        [fm copyItemAtPath:packageFilePath toPath:destPath error:nil];
+        
+        // Update package status
+        PlumbumPackage *updatedPackage = [[PlumbumPackage alloc] initWithDictionary:[package toDictionary]];
+        updatedPackage.installStatus = PackageInstallStatusInstalled;
+        updatedPackage.installDate = [NSDate date];
+        updatedPackage.installedVersion = updatedPackage.version;
+        updatedPackage.installPath = packageDir;
+        updatedPackage.filePath = destPath;
+        
+        // Add to installed packages
+        [_installedPackagesCache addObject:updatedPackage];
+        [self saveInstalledPackages];
+        
+        NSLog(@"Misaka package %@ installed successfully", updatedPackage.packageID);
+        return YES;
+    }
+    
+    // For .deb files, use existing dpkg logic
     // Validate package
-    if (![self validatePackageFile:package.filePath error:error]) {
+    if (![self validatePackageFile:packageFilePath error:error]) {
         return NO;
     }
     
     // Parse control file
-    NSDictionary *controlData = [self parsePackageControl:package.filePath error:error];
+    NSDictionary *controlData = [self parsePackageControl:packageFilePath error:error];
     if (!controlData) {
         return NO;
     }
     
     // Update package info from control file
     PlumbumPackage *updatedPackage = [[PlumbumPackage alloc] initWithDictionary:controlData];
-    updatedPackage.filePath = package.filePath;
+    updatedPackage.filePath = packageFilePath;
     
     // Check dependencies
     if (updatedPackage.dependencies.count > 0) {

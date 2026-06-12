@@ -439,8 +439,10 @@
                 NSDictionary *latestRelease = releases.firstObject;
                 pkgDict[@"Version"] = latestRelease[@"Version"] ?: @"1.0";
                 pkgDict[@"Filename"] = latestRelease[@"Package"] ?: @"";
+                pkgDict[@"PackageType"] = @"misaka"; // Mark as misaka package
             } else {
                 pkgDict[@"Version"] = @"1.0";
+                pkgDict[@"PackageType"] = @"misaka";
             }
             
             // Author info
@@ -454,6 +456,7 @@
             
             // Additional metadata
             pkgDict[@"MinIOSVersion"] = packageDict[@"MinIOSVersion"] ?: @"";
+            pkgDict[@"MaxIOSVersion"] = packageDict[@"MaxIOSVersion"] ?: @"";
             pkgDict[@"CompatibleExploit"] = packageDict[@"compatibleExploit"] ?: @[];
             
             // Icon
