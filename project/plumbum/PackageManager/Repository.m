@@ -619,7 +619,7 @@
     NSArray *defaultRepos = @[
         @{
             @"name": @"Misaka Network",
-            @"url": @"https://raw.githubusercontent.com/shimajiron/Misaka_Network/main/repo.json",
+            @"url": @"https://raw.githubusercontent.com/shimajiron/Misaka_Network/main/repoDS.json",
             @"description": @"Official Misaka repository",
             @"type": @"native",
             @"trusted": @YES
