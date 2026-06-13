@@ -114,9 +114,9 @@
     // Icon — use SF Symbol as placeholder
     _iconImageView.image = [UIImage systemImageNamed:@"shippingbox.fill"];
 
-    _nameLabel.text = package.name;
-    _descriptionLabel.text = package.packageDescription;
-    _versionLabel.text = [NSString stringWithFormat:@"v%@", package.version];
+    _nameLabel.text = package.name ?: @"Unknown Package";
+    _descriptionLabel.text = package.packageDescription ?: @"";
+    _versionLabel.text = [NSString stringWithFormat:@"v%@", package.version ?: @"Unknown"];
 
     switch (package.installStatus) {
         case PackageInstallStatusInstalled:

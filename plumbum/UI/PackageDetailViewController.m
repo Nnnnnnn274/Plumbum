@@ -175,11 +175,11 @@
         [_descriptionTextView.bottomAnchor constraintEqualToAnchor:_contentView.bottomAnchor constant:-pad],
     ]];
 
-    [self addInfoRow:@"Version" value:_package.version];
-    [self addInfoRow:@"Section" value:_package.section];
-    [self addInfoRow:@"Package ID" value:_package.packageID];
-    [self addInfoRow:@"Architecture" value:_package.architecture];
-    if (_package.dependencies.count > 0) {
+    [self addInfoRow:@"Version" value:_package.version ?: @"Unknown"];
+    [self addInfoRow:@"Section" value:_package.section ?: @"Unknown"];
+    [self addInfoRow:@"Package ID" value:_package.packageID ?: @"Unknown"];
+    [self addInfoRow:@"Architecture" value:_package.architecture ?: @"Unknown"];
+    if (_package.dependencies && _package.dependencies.count > 0) {
         [self addInfoRow:@"Dependencies" value:[_package.dependencies componentsJoinedByString:@", "]];
     }
 }
