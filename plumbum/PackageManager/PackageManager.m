@@ -227,6 +227,17 @@
     
     // For .misaka files, skip dpkg and just copy the file
     if ([package.packageType isEqualToString:@"misaka"]) {
+        // Ensure packageID is not nil
+        if (!package.packageID || package.packageID.length == 0) {
+            if (error) {
+                *error = [NSError errorWithDomain:@"PackageManager"
+                                             code:105
+                                         userInfo:@{NSLocalizedDescriptionKey: @"Package ID is required for installation"}];
+            }
+            NSLog(@"Cannot install Misaka package: packageID is nil");
+            return NO;
+        }
+        
         NSString *installDir = [_packagesDirectory stringByAppendingPathComponent:@"installed"];
         NSString *packageDir = [installDir stringByAppendingPathComponent:package.packageID];
         
@@ -238,7 +249,15 @@
         
         // Copy .misaka file to installed directory
         NSString *destPath = [packageDir stringByAppendingPathComponent:[packageFilePath lastPathComponent]];
-        [fm copyItemAtPath:packageFilePath toPath:destPath error:nil];
+        NSError *copyError = nil;
+        [fm copyItemAtPath:packageFilePath toPath:destPath error:&copyError];
+        if (copyError) {
+            if (error) {
+                *error = copyError;
+            }
+            NSLog(@"Failed to copy .misaka file: %@", copyError.localizedDescription);
+            return NO;
+        }
         
         // Update package status
         PlumbumPackage *updatedPackage = [[PlumbumPackage alloc] initWithDictionary:[package toDictionary]];
@@ -439,6 +458,10 @@
                 
                 [packages addObject:package];
             }
+        } else if ([file hasSuffix:@".misaka"]) {
+            // Skip .misaka files in local directory - they're meant to be downloaded from repository
+            NSLog(@"Skipping .misaka file in local directory: %@", file);
+            continue;
         }
     }
     

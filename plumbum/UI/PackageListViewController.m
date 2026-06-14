@@ -200,12 +200,19 @@
             dispatch_async(dispatch_get_main_queue(), ^{
                 self.isLoadingPackages = NO;
                 [self hideLoadingView];
-                if (repoPackages) {
+                if (repoPackages && repoPackages.count > 0) {
+                    NSLog(@"Loaded %ld packages from repository", (long)repoPackages.count);
                     self.packages = repoPackages;
                     self.filteredPackages = self.packages;
                     [self.tableView reloadData];
-                } else {
+                } else if (error) {
+                    NSLog(@"Error loading packages: %@", error.localizedDescription);
                     [self showErrorAlert:error];
+                } else {
+                    NSLog(@"No packages found in repository");
+                    self.packages = @[];
+                    self.filteredPackages = @[];
+                    [self.tableView reloadData];
                 }
             });
         }];
