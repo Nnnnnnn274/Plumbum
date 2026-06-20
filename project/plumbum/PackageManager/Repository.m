@@ -451,9 +451,9 @@
             pkgDict[@"Description"] = packageDict[@"Description"] ?: @"";
             
             // Get the latest release
-            NSArray *releases = packageDict[@"Releases"];
-            if (releases && releases.count > 0) {
-                NSDictionary *latestRelease = releases.firstObject;
+            id releases = packageDict[@"Releases"];
+            if (releases && [releases isKindOfClass:[NSArray class]] && [(NSArray *)releases count] > 0) {
+                NSDictionary *latestRelease = [(NSArray *)releases firstObject];
                 pkgDict[@"Version"] = latestRelease[@"Version"] ?: @"1.0";
                 pkgDict[@"Filename"] = latestRelease[@"Package"] ?: @"";
                 pkgDict[@"PackageType"] = @"misaka"; // Mark as misaka package
