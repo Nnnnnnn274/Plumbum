@@ -8,6 +8,7 @@
 #import "MisakaPackage.h"
 #import "PackageManager.h"
 #import <zlib.h>
+#import <sys/utsname.h>
 
 @implementation MisakaPackage
 
@@ -24,8 +25,8 @@
 }
 
 - (BOOL)parseMisakaFile:(NSError **)error {
-    // .misaka files have a JSON header followed by package data
-    // Format: [JSON metadata]\n[package data]
+    // .misaka files are ZIP archives containing package data
+    // They typically contain a Config.plist or similar metadata file
     
     NSFileManager *fm = [NSFileManager defaultManager];
     if (![fm fileExistsAtPath:_filePath]) {
@@ -37,6 +38,105 @@
         return NO;
     }
     
+    // Create temporary directory for extraction
+    NSString *tempDir = [NSTemporaryDirectory() stringByAppendingPathComponent:[[NSUUID UUID] UUIDString]];
+    [fm createDirectoryAtPath:tempDir withIntermediateDirectories:YES attributes:nil error:nil];
+    
+    // Try to extract the ZIP archive
+    BOOL extracted = [self extractZipFile:_filePath toDestination:tempDir error:error];
+    
+    if (!extracted) {
+        // If ZIP extraction fails, try parsing as JSON (fallback for older format)
+        return [self parseAsJSON:error];
+    }
+    
+    // Look for Config.plist or Info.plist in the extracted files
+    NSString *configPath = [self findConfigFileInDirectory:tempDir];
+    
+    if (configPath) {
+        NSDictionary *configDict = [NSDictionary dictionaryWithContentsOfFile:configPath];
+        if (configDict) {
+            _metadata = configDict;
+            [self extractPackageInfoFromConfig:configDict];
+            
+            // Cleanup
+            [fm removeItemAtPath:tempDir error:nil];
+            return YES;
+        }
+    }
+    
+    // If no config file found, try to parse as JSON from the original file
+    [fm removeItemAtPath:tempDir error:nil];
+    return [self parseAsJSON:error];
+}
+
+- (BOOL)extractZipFile:(NSString *)zipPath toDestination:(NSString *)destPath error:(NSError **)error {
+    // Use system unzip command to extract the archive
+    NSTask *task = [[NSTask alloc] init];
+    [task setLaunchPath:@"/usr/bin/unzip"];
+    [task setArguments:@[@"-q", @"-o", zipPath, @"-d", destPath]];
+    
+    NSPipe *pipe = [NSPipe pipe];
+    [task setStandardOutput:pipe];
+    [task setStandardError:pipe];
+    
+    [task launch];
+    [task waitUntilExit];
+    
+    if ([task terminationStatus] != 0) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"MisakaPackage" 
+                                         code:302 
+                                     userInfo:@{NSLocalizedDescriptionKey: @"Failed to extract ZIP archive"}];
+        }
+        return NO;
+    }
+    
+    return YES;
+}
+
+- (NSString *)findConfigFileInDirectory:(NSString *)directory {
+    NSFileManager *fm = [NSFileManager defaultManager];
+    NSArray *files = [fm contentsOfDirectoryAtPath:directory error:nil];
+    
+    for (NSString *file in files) {
+        NSString *fullPath = [directory stringByAppendingPathComponent:file];
+        BOOL isDirectory = NO;
+        [fm fileExistsAtPath:fullPath isDirectory:&isDirectory];
+        
+        if (isDirectory) {
+            // Recursively search subdirectories
+            NSString *found = [self findConfigFileInDirectory:fullPath];
+            if (found) return found;
+        } else {
+            // Check for config files
+            if ([file isEqualToString:@"Config.plist"] || 
+                [file isEqualToString:@"Info.plist"] ||
+                [file isEqualToString:@"package.plist"] ||
+                [file isEqualToString:@"metadata.plist"]) {
+                return fullPath;
+            }
+        }
+    }
+    
+    return nil;
+}
+
+- (void)extractPackageInfoFromConfig:(NSDictionary *)config {
+    // Extract package information from Config.plist
+    _packageID = config[@"PackageID"] ?: config[@"CFBundleIdentifier"] ?: @"";
+    _name = config[@"Name"] ?: config[@"CFBundleDisplayName"] ?: _packageID;
+    _version = config[@"Version"] ?: config[@"CFBundleShortVersionString"] ?: @"1.0";
+    _misakaDescription = config[@"Description"] ?: config[@"Description"] ?: @"";
+    _author = config[@"Author"] ?: config[@"Author"] ?: @"Unknown";
+    _section = config[@"Section"] ?: @"Utilities";
+    _iconPath = config[@"Icon"] ?: config[@"IconPath"];
+    _installScript = config[@"InstallScript"];
+    _uninstallScript = config[@"UninstallScript"];
+}
+
+- (BOOL)parseAsJSON:(NSError **)error {
+    // Fallback: try to parse as JSON (for older .misaka format)
     NSData *fileData = [NSData dataWithContentsOfFile:_filePath];
     if (!fileData) {
         if (error) {
@@ -47,42 +147,34 @@
         return NO;
     }
     
-    // Find the separator between JSON and data
     NSString *fileString = [[NSString alloc] initWithData:fileData encoding:NSUTF8StringEncoding];
-    NSRange separatorRange = [fileString rangeOfString:@"\n---MISAKA-PACKAGE-DATA---\n"];
+    if (!fileString) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"MisakaPackage" 
+                                         code:303 
+                                     userInfo:@{NSLocalizedDescriptionKey: @"File is not valid UTF-8"}];
+        }
+        return NO;
+    }
     
-    if (separatorRange.location == NSNotFound) {
-        // No separator, treat entire file as JSON metadata
-        NSData *jsonData = [fileString dataUsingEncoding:NSUTF8StringEncoding];
-        _metadata = [NSJSONSerialization JSONObjectWithData:jsonData options:0 error:error];
-        
-        if (!_metadata) {
-            return NO;
-        }
-    } else {
-        // Parse JSON header
-        NSString *jsonString = [fileString substringToIndex:separatorRange.location];
-        NSData *jsonData = [jsonString dataUsingEncoding:NSUTF8StringEncoding];
-        _metadata = [NSJSONSerialization JSONObjectWithData:jsonData options:0 error:error];
-        
-        if (!_metadata) {
-            return NO;
-        }
-        
-        // Package data starts after separator
-        // In a real implementation, you'd extract and process this
+    // Try to parse as JSON directly
+    NSData *jsonData = [fileString dataUsingEncoding:NSUTF8StringEncoding];
+    _metadata = [NSJSONSerialization JSONObjectWithData:jsonData options:0 error:error];
+    
+    if (!_metadata) {
+        return NO;
     }
     
     // Extract package info from metadata
-    _packageID = _metadata[@"packageID"] ?: @"";
-    _name = _metadata[@"name"] ?: _packageID;
-    _version = _metadata[@"version"] ?: @"1.0";
-    _misakaDescription = _metadata[@"description"] ?: @"";
-    _author = _metadata[@"author"] ?: @"Unknown";
-    _section = _metadata[@"section"] ?: @"Utilities";
-    _iconPath = _metadata[@"iconPath"];
-    _installScript = _metadata[@"installScript"];
-    _uninstallScript = _metadata[@"uninstallScript"];
+    _packageID = _metadata[@"packageID"] ?: _metadata[@"PackageID"] ?: @"";
+    _name = _metadata[@"name"] ?: _metadata[@"Name"] ?: _packageID;
+    _version = _metadata[@"version"] ?: _metadata[@"Version"] ?: @"1.0";
+    _misakaDescription = _metadata[@"description"] ?: _metadata[@"Description"] ?: @"";
+    _author = _metadata[@"author"] ?: _metadata[@"Author"] ?: @"Unknown";
+    _section = _metadata[@"section"] ?: _metadata[@"Section"] ?: @"Utilities";
+    _iconPath = _metadata[@"iconPath"] ?: _metadata[@"Icon"];
+    _installScript = _metadata[@"installScript"] ?: _metadata[@"InstallScript"];
+    _uninstallScript = _metadata[@"uninstallScript"] ?: _metadata[@"UninstallScript"];
     
     return YES;
 }
