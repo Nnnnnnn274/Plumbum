@@ -9,6 +9,8 @@
 #import "PackageManager.h"
 #import <zlib.h>
 #import <sys/utsname.h>
+#import <sys/stat.h>
+#import <unistd.h>
 
 @implementation MisakaPackage
 
@@ -71,11 +73,26 @@
 }
 
 - (BOOL)extractZipFile:(NSString *)zipPath toDestination:(NSString *)destPath error:(NSError **)error {
-    // Use system() to run unzip command (iOS-compatible)
-    NSString *command = [NSString stringWithFormat:@"/usr/bin/unzip -q -o \"%@\" -d \"%@\"", zipPath, destPath];
-    int result = system([command UTF8String]);
+    // Use posix_spawn to run unzip command (iOS-compatible alternative to system())
+    pid_t pid;
+    const char *argv[] = {"/usr/bin/unzip", "-q", "-o", [zipPath UTF8String], "-d", [destPath UTF8String], NULL};
     
-    if (result != 0) {
+    int spawn_result = posix_spawn(&pid, argv[0], NULL, NULL, (char *const *)argv, NULL);
+    
+    if (spawn_result != 0) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"MisakaPackage" 
+                                         code:302 
+                                     userInfo:@{NSLocalizedDescriptionKey: @"Failed to spawn unzip process"}];
+        }
+        return NO;
+    }
+    
+    // Wait for the process to complete
+    int status;
+    waitpid(pid, &status, 0);
+    
+    if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
         if (error) {
             *error = [NSError errorWithDomain:@"MisakaPackage" 
                                          code:302 
