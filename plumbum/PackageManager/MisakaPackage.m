@@ -71,19 +71,11 @@
 }
 
 - (BOOL)extractZipFile:(NSString *)zipPath toDestination:(NSString *)destPath error:(NSError **)error {
-    // Use system unzip command to extract the archive
-    NSTask *task = [[NSTask alloc] init];
-    [task setLaunchPath:@"/usr/bin/unzip"];
-    [task setArguments:@[@"-q", @"-o", zipPath, @"-d", destPath]];
+    // Use system() to run unzip command (iOS-compatible)
+    NSString *command = [NSString stringWithFormat:@"/usr/bin/unzip -q -o \"%@\" -d \"%@\"", zipPath, destPath];
+    int result = system([command UTF8String]);
     
-    NSPipe *pipe = [NSPipe pipe];
-    [task setStandardOutput:pipe];
-    [task setStandardError:pipe];
-    
-    [task launch];
-    [task waitUntilExit];
-    
-    if ([task terminationStatus] != 0) {
+    if (result != 0) {
         if (error) {
             *error = [NSError errorWithDomain:@"MisakaPackage" 
                                          code:302 
