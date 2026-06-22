@@ -149,9 +149,10 @@ typedef NS_ENUM(NSInteger, PBExploitStatus) {
     _progressWidthConstraint = [_progressFill.widthAnchor
         constraintEqualToAnchor:_progressTrack.widthAnchor multiplier:0.0001];
 
-    // ── Run button ────────────────────────────────────────────────────────────
+    // ── Run button (hidden - exploit auto-runs) ─────────────────────────────
     _runButton = [self makePrimaryButton:@"Running…" icon:@"arrow.clockwise"];
     [_runButton addTarget:self action:@selector(runExploit) forControlEvents:UIControlEventTouchUpInside];
+    _runButton.hidden = YES; // Hide since exploit auto-runs
 
     // ── Continue button (revealed when done) ──────────────────────────────────
     _continueButton = [self makeSecondaryButton:@"Continue to App" icon:@"arrow.right"];
@@ -251,13 +252,13 @@ typedef NS_ENUM(NSInteger, PBExploitStatus) {
         [_progressFill.bottomAnchor constraintEqualToAnchor:_progressTrack.bottomAnchor],
         _progressWidthConstraint,
 
-        // Run button
+        // Run button (hidden - exploit auto-runs)
         [_runButton.topAnchor constraintEqualToAnchor:_progressTrack.bottomAnchor constant:18],
         [_runButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:pad],
         [_runButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-pad],
         [_runButton.heightAnchor constraintEqualToConstant:54],
 
-        // Continue button
+        // Continue button (shown after exploit completes)
         [_continueButton.topAnchor constraintEqualToAnchor:_runButton.bottomAnchor constant:10],
         [_continueButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:pad],
         [_continueButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-pad],
@@ -352,8 +353,7 @@ typedef NS_ENUM(NSInteger, PBExploitStatus) {
     _subtitleLabel.textColor = [SileoColors secondaryText];
     [self setProgressFraction:0.0 animated:NO];
     [self setRunButtonTitle:@"Run Kernel Exploit" icon:@"play.fill"];
-    _runButton.alpha = 1.0;
-    _runButton.userInteractionEnabled = YES;
+    _runButton.hidden = YES; // Hidden since exploit auto-runs
     _continueButton.alpha = 0;
     _continueButton.userInteractionEnabled = NO;
 }
@@ -370,8 +370,7 @@ typedef NS_ENUM(NSInteger, PBExploitStatus) {
     _subtitleLabel.textColor = [SileoColors warningColor];
     [self setProgressFraction:0.5 animated:YES];
     [self setRunButtonTitle:@"Running…" icon:@"arrow.clockwise"];
-    _runButton.alpha = 0.65;
-    _runButton.userInteractionEnabled = NO;
+    _runButton.hidden = YES; // Hidden since exploit auto-runs
 }
 
 - (void)applyDoneState {
@@ -386,8 +385,7 @@ typedef NS_ENUM(NSInteger, PBExploitStatus) {
     _subtitleLabel.textColor = [SileoColors sileoGreen];
     [self setProgressFraction:1.0 animated:YES];
     [self setRunButtonTitle:@"Exploit Complete" icon:@"checkmark"];
-    _runButton.alpha = 0.55;
-    _runButton.userInteractionEnabled = NO;
+    _runButton.hidden = YES; // Hidden since exploit auto-runs
 
     // Reveal continue button
     [UIView animateWithDuration:0.35 delay:0.2 options:UIViewAnimationOptionCurveEaseOut animations:^{

@@ -212,6 +212,11 @@
 }
 
 - (void)savePackage:(PlumbumPackage *)package {
+    // Ensure saved packages are loaded before saving
+    if (_savedPackagesCache.count == 0) {
+        [self loadSavedPackages];
+    }
+    
     // Check if package is already saved
     for (PlumbumPackage *savedPackage in _savedPackagesCache) {
         if ([savedPackage.packageID isEqualToString:package.packageID]) {

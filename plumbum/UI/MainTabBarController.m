@@ -109,13 +109,13 @@
                 image:[UIImage systemImageNamed:@"bookmark"]
         selectedImage:[UIImage systemImageNamed:@"bookmark.fill"]];
 
-    // Exploit (was Logs — now the kernel exploit screen)
+    // Logs tab
     LogsViewController *logsVC = [[LogsViewController alloc] init];
     UINavigationController *logsNav = [self wrapInNav:logsVC];
     logsNav.tabBarItem = [[UITabBarItem alloc]
-        initWithTitle:@"Exploit"
-                image:[UIImage systemImageNamed:@"cpu"]
-        selectedImage:[UIImage systemImageNamed:@"cpu.fill"]];
+        initWithTitle:@"Logs"
+                image:[UIImage systemImageNamed:@"doc.text"]
+        selectedImage:[UIImage systemImageNamed:@"doc.text.fill"]];
 
     // Settings
     SettingsViewController *settingsVC = [[SettingsViewController alloc] init];
