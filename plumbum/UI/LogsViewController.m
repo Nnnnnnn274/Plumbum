@@ -414,6 +414,9 @@ typedef NS_ENUM(NSInteger, PBExploitStatus) {
     static BOOL exploitHasRun = NO;
     exploitHasRun = YES;
 
+    // Save logs to file for viewing in LogsOnlyViewController
+    [self saveLogsToFile];
+
     // Reveal continue button
     [UIView animateWithDuration:0.35 delay:0.2 options:UIViewAnimationOptionCurveEaseOut animations:^{
         self->_continueButton.alpha = 1.0;
@@ -426,6 +429,16 @@ typedef NS_ENUM(NSInteger, PBExploitStatus) {
     // Call completion block if provided
     if (self.completionBlock) {
         self.completionBlock();
+    }
+}
+
+- (void)saveLogsToFile {
+    NSString *documentsDir = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+    NSString *logPath = [documentsDir stringByAppendingPathComponent:@"plumbum_log.txt"];
+    
+    NSString *logContent = _logView.text;
+    if (logContent) {
+        [logContent writeToFile:logPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
     }
 }
 

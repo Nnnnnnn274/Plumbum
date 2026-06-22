@@ -20,7 +20,7 @@
     if (!self.window) {
         self.window = [[UIWindow alloc] initWithWindowScene:(UIWindowScene *)scene];
         
-        // Always show LogsViewController on launch to run exploit
+        // Show LogsViewController on launch to run exploit
         LogsViewController *logsVC = [[LogsViewController alloc] init];
         self.window.rootViewController = logsVC;
         

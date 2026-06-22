@@ -8,7 +8,9 @@
 #import "TweaksViewController.h"
 #import "SourcesViewController.h"
 #import "LogsViewController.h"
+#import "LogsOnlyViewController.h"
 #import "SavedPackagesViewController.h"
+#import "JSQuickLoaderViewController.h"
 #import "SettingsViewController.h"
 
 @interface MainTabBarController ()
@@ -109,13 +111,21 @@
                 image:[UIImage systemImageNamed:@"bookmark"]
         selectedImage:[UIImage systemImageNamed:@"bookmark.fill"]];
 
-    // Logs tab
-    LogsViewController *logsVC = [[LogsViewController alloc] init];
+    // Logs tab (read-only logs view)
+    LogsOnlyViewController *logsVC = [[LogsOnlyViewController alloc] init];
     UINavigationController *logsNav = [self wrapInNav:logsVC];
     logsNav.tabBarItem = [[UITabBarItem alloc]
         initWithTitle:@"Logs"
                 image:[UIImage systemImageNamed:@"doc.text"]
         selectedImage:[UIImage systemImageNamed:@"doc.text.fill"]];
+
+    // JS QuickLoader
+    JSQuickLoaderViewController *jsVC = [[JSQuickLoaderViewController alloc] init];
+    UINavigationController *jsNav = [self wrapInNav:jsVC];
+    jsNav.tabBarItem = [[UITabBarItem alloc]
+        initWithTitle:@"JS"
+                image:[UIImage systemImageNamed:@"bolt"]
+        selectedImage:[UIImage systemImageNamed:@"bolt.fill"]];
 
     // Settings
     SettingsViewController *settingsVC = [[SettingsViewController alloc] init];
@@ -125,7 +135,7 @@
                 image:[UIImage systemImageNamed:@"gear"]
         selectedImage:[UIImage systemImageNamed:@"gearshape.fill"]];
 
-    self.viewControllers = @[tweaksNav, sourcesNav, savedNav, logsNav, settingsNav];
+    self.viewControllers = @[tweaksNav, sourcesNav, savedNav, logsNav, jsNav, settingsNav];
 }
 
 @end
