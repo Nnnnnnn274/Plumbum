@@ -282,7 +282,7 @@
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
     if (_showingBuiltIn) {
         NSSet *categories = [NSSet setWithArray:[_builtInTweaks valueForKey:@"category"]];
-        NSArray *sortedCategories = [categories sortedArrayUsingSelector:@selector(compare:)];
+        NSArray *sortedCategories = [[categories allObjects] sortedArrayUsingSelector:@selector(compare:)];
         return sortedCategories[section];
     }
     return @"Repository Scripts";
@@ -291,7 +291,7 @@
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     if (_showingBuiltIn) {
         NSSet *categories = [NSSet setWithArray:[_builtInTweaks valueForKey:@"category"]];
-        NSArray *sortedCategories = [categories sortedArrayUsingSelector:@selector(compare:)];
+        NSArray *sortedCategories = [[categories allObjects] sortedArrayUsingSelector:@selector(compare:)];
         NSString *category = sortedCategories[section];
         return [[_builtInTweaks filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"category == %@", category]] count];
     }
@@ -303,7 +303,7 @@
     
     if (_showingBuiltIn) {
         NSSet *categories = [NSSet setWithArray:[_builtInTweaks valueForKey:@"category"]];
-        NSArray *sortedCategories = [categories sortedArrayUsingSelector:@selector(compare:)];
+        NSArray *sortedCategories = [[categories allObjects] sortedArrayUsingSelector:@selector(compare:)];
         NSString *category = sortedCategories[indexPath.section];
         NSArray *tweaksInCategory = [_builtInTweaks filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"category == %@", category]];
         JSBuiltInTweak *tweak = tweaksInCategory[indexPath.row];
