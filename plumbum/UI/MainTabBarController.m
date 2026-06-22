@@ -8,6 +8,7 @@
 #import "TweaksViewController.h"
 #import "SourcesViewController.h"
 #import "LogsViewController.h"
+#import "SavedPackagesViewController.h"
 #import "SettingsViewController.h"
 
 @interface MainTabBarController ()
@@ -100,6 +101,14 @@
                 image:[UIImage systemImageNamed:@"globe"]
         selectedImage:[UIImage systemImageNamed:@"globe.fill"]];
 
+    // Saved
+    SavedPackagesViewController *savedVC = [[SavedPackagesViewController alloc] init];
+    UINavigationController *savedNav = [self wrapInNav:savedVC];
+    savedNav.tabBarItem = [[UITabBarItem alloc]
+        initWithTitle:@"Saved"
+                image:[UIImage systemImageNamed:@"bookmark"]
+        selectedImage:[UIImage systemImageNamed:@"bookmark.fill"]];
+
     // Exploit (was Logs — now the kernel exploit screen)
     LogsViewController *logsVC = [[LogsViewController alloc] init];
     UINavigationController *logsNav = [self wrapInNav:logsVC];
@@ -116,7 +125,7 @@
                 image:[UIImage systemImageNamed:@"gear"]
         selectedImage:[UIImage systemImageNamed:@"gearshape.fill"]];
 
-    self.viewControllers = @[tweaksNav, sourcesNav, logsNav, settingsNav];
+    self.viewControllers = @[tweaksNav, sourcesNav, savedNav, logsNav, settingsNav];
 }
 
 @end

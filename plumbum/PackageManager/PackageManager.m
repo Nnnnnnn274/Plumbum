@@ -95,8 +95,10 @@
 
 @interface PackageManager ()
 @property (nonatomic, strong) NSMutableArray<PlumbumPackage *> *installedPackagesCache;
+@property (nonatomic, strong) NSMutableArray<PlumbumPackage *> *savedPackagesCache;
 @property (nonatomic, strong) NSString *packagesDirectory;
 @property (nonatomic, strong) NSString *databasePath;
+@property (nonatomic, strong) NSString *savedPackagesPath;
 @end
 
 @implementation PackageManager
@@ -116,7 +118,9 @@
         _packagesDirectory = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
         _packagesDirectory = [_packagesDirectory stringByAppendingPathComponent:@"Packages"];
         _databasePath = [_packagesDirectory stringByAppendingPathComponent:@"installed_packages.plist"];
+        _savedPackagesPath = [_packagesDirectory stringByAppendingPathComponent:@"saved_packages.plist"];
         _installedPackagesCache = [NSMutableArray array];
+        _savedPackagesCache = [NSMutableArray array];
         
         // Don't create directories or load packages in init to prevent panics before exploit
         // They will be loaded on first access
@@ -171,6 +175,73 @@
     }
     
     [packageDicts writeToFile:_databasePath atomically:YES];
+}
+
+#pragma mark - Saved Packages
+
+- (NSArray<PlumbumPackage *> *)savedPackages {
+    // Lazy load saved packages on first access
+    if (_savedPackagesCache.count == 0) {
+        [self createDirectoriesIfNeeded];
+        [self loadSavedPackages];
+    }
+    return [_savedPackagesCache copy];
+}
+
+- (void)loadSavedPackages {
+    _savedPackagesCache = [NSMutableArray array];
+    
+    NSFileManager *fm = [NSFileManager defaultManager];
+    if ([fm fileExistsAtPath:_savedPackagesPath]) {
+        NSArray *savedPackages = [NSArray arrayWithContentsOfFile:_savedPackagesPath];
+        for (NSDictionary *dict in savedPackages) {
+            PlumbumPackage *package = [[PlumbumPackage alloc] initWithDictionary:dict];
+            [_savedPackagesCache addObject:package];
+        }
+    }
+}
+
+- (void)saveSavedPackages {
+    NSMutableArray *packageDicts = [NSMutableArray array];
+    
+    for (PlumbumPackage *package in _savedPackagesCache) {
+        [packageDicts addObject:[package toDictionary]];
+    }
+    
+    [packageDicts writeToFile:_savedPackagesPath atomically:YES];
+}
+
+- (void)savePackage:(PlumbumPackage *)package {
+    // Check if package is already saved
+    for (PlumbumPackage *savedPackage in _savedPackagesCache) {
+        if ([savedPackage.packageID isEqualToString:package.packageID]) {
+            return; // Already saved
+        }
+    }
+    
+    [_savedPackagesCache addObject:package];
+    [self saveSavedPackages];
+    NSLog(@"Saved package: %@", package.name);
+}
+
+- (void)removeSavedPackage:(PlumbumPackage *)package {
+    for (PlumbumPackage *savedPackage in [_savedPackagesCache copy]) {
+        if ([savedPackage.packageID isEqualToString:package.packageID]) {
+            [_savedPackagesCache removeObject:savedPackage];
+            [self saveSavedPackages];
+            NSLog(@"Removed saved package: %@", package.name);
+            return;
+        }
+    }
+}
+
+- (BOOL)isPackageSaved:(PlumbumPackage *)package {
+    for (PlumbumPackage *savedPackage in _savedPackagesCache) {
+        if ([savedPackage.packageID isEqualToString:package.packageID]) {
+            return YES;
+        }
+    }
+    return NO;
 }
 
 #pragma mark - Package Operations

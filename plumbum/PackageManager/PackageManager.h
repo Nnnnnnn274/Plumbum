@@ -71,6 +71,13 @@ typedef NS_ENUM(NSInteger, PackageInstallStatus) {
 - (NSArray<PlumbumPackage *> *)installedPackages;
 - (void)saveInstalledPackages;
 
+// Saved packages (for "get once" functionality)
+- (NSArray<PlumbumPackage *> *)savedPackages;
+- (void)savePackage:(PlumbumPackage *)package;
+- (void)removeSavedPackage:(PlumbumPackage *)package;
+- (BOOL)isPackageSaved:(PlumbumPackage *)package;
+- (void)saveSavedPackages;
+
 // Directory management
 - (void)createDirectoriesIfNeeded;
 - (void)loadInstalledPackages;

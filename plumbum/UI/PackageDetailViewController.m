@@ -277,6 +277,9 @@
             [self showErrorAlert:error];
         }
     } else {
+        // Save package when "get once" is pressed
+        [manager savePackage:_package];
+        
         if ([manager installPackage:_package error:&error]) {
             _package.installStatus = PackageInstallStatusInstalled;
             [self populateData];
