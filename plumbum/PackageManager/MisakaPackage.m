@@ -11,6 +11,7 @@
 #import <sys/utsname.h>
 #import <sys/stat.h>
 #import <unistd.h>
+#import <spawn.h>
 
 @implementation MisakaPackage
 
