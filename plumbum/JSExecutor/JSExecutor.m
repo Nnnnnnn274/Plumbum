@@ -7,6 +7,10 @@
 #import "JSExecutor.h"
 #import "../TaskRop/RemoteCall.h"
 
+@interface JSExecutor ()
+@property (nonatomic, strong, readwrite) JSContext *context;
+@end
+
 @implementation JSExecutor
 
 + (instancetype)sharedExecutor {

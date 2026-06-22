@@ -15,7 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)executeJavaScriptFromFile:(NSString *)filePath error:(NSError **)error;
 - (BOOL)executeJavaScriptFromString:(NSString *)script error:(NSError **)error;
-- (JSContext *)context;
+@property (nonatomic, strong, readonly) JSContext *context;
 
 @end
 
