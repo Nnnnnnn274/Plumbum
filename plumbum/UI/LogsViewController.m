@@ -74,9 +74,22 @@ typedef NS_ENUM(NSInteger, PBExploitStatus) {
 @property (nonatomic, strong) LogTextView     *logView;
 // state
 @property (nonatomic, assign) PBExploitStatus  exploitStatus;
+@property (nonatomic, copy) void (^completionBlock)(void);
 @end
 
 @implementation LogsViewController
+
+- (instancetype)initWithCompletion:(void (^ _Nullable)(void))completion {
+    self = [super init];
+    if (self) {
+        _completionBlock = completion;
+    }
+    return self;
+}
+
+- (instancetype)init {
+    return [self initWithCompletion:nil];
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -89,10 +102,20 @@ typedef NS_ENUM(NSInteger, PBExploitStatus) {
     [self buildViews];
     [self applyIdleState];
 
-    // Auto-run the exploit as soon as the view is ready
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self runExploit];
-    });
+    // Check if exploit has already run in this session
+    static BOOL exploitHasRun = NO;
+    if (exploitHasRun) {
+        // Skip exploit if already run in this session
+        [self applyDoneState];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [self continueToApp];
+        });
+    } else {
+        // Auto-run the exploit as soon as the view is ready
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self runExploit];
+        });
+    }
 }
 
 #pragma mark - Build views
@@ -387,6 +410,10 @@ typedef NS_ENUM(NSInteger, PBExploitStatus) {
     [self setRunButtonTitle:@"Exploit Complete" icon:@"checkmark"];
     _runButton.hidden = YES; // Hidden since exploit auto-runs
 
+    // Mark exploit as run in this session
+    static BOOL exploitHasRun = NO;
+    exploitHasRun = YES;
+
     // Reveal continue button
     [UIView animateWithDuration:0.35 delay:0.2 options:UIViewAnimationOptionCurveEaseOut animations:^{
         self->_continueButton.alpha = 1.0;
@@ -395,7 +422,11 @@ typedef NS_ENUM(NSInteger, PBExploitStatus) {
     }];
 
     [[NSNotificationCenter defaultCenter] postNotificationName:@"ExploitCompleted" object:nil];
-    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"ExploitRun"];
+    
+    // Call completion block if provided
+    if (self.completionBlock) {
+        self.completionBlock();
+    }
 }
 
 

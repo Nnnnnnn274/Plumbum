@@ -11,6 +11,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface LogsViewController : UIViewController
 
+- (instancetype)initWithCompletion:(void (^ _Nullable)(void))completion;
+
 @end
 
 NS_ASSUME_NONNULL_END

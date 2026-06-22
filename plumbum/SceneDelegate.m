@@ -20,18 +20,9 @@
     if (!self.window) {
         self.window = [[UIWindow alloc] initWithWindowScene:(UIWindowScene *)scene];
         
-        // Check if exploit has already run
-        BOOL exploitRun = [[NSUserDefaults standardUserDefaults] boolForKey:@"ExploitRun"];
-        
-        if (exploitRun) {
-            // Exploit already run, go straight to main app
-            MainTabBarController *tabBarController = [[MainTabBarController alloc] init];
-            self.window.rootViewController = tabBarController;
-        } else {
-            // Show LogsViewController to run exploit first
-            LogsViewController *logsVC = [[LogsViewController alloc] init];
-            self.window.rootViewController = logsVC;
-        }
+        // Always show LogsViewController on launch to run exploit
+        LogsViewController *logsVC = [[LogsViewController alloc] init];
+        self.window.rootViewController = logsVC;
         
         [self.window makeKeyAndVisible];
     }

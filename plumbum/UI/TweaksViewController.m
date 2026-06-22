@@ -7,6 +7,7 @@
 #import "SileoColors.h"
 #import "PackageManager.h"
 #import "MisakaPackage.h"
+#import "LogsViewController.h"
 
 static NSString * const kTweakCellID = @"TweakCell";
 
@@ -109,6 +110,7 @@ static NSString * const kTweakCellID = @"TweakCell";
 @property (nonatomic, strong) NSMutableArray<NSDictionary *> *installedTweaks;
 @property (nonatomic, strong) UIButton *addTweakButton;
 @property (nonatomic, assign) BOOL exploitRun;
+@property (nonatomic, strong) NSDictionary *pendingTweak;
 @end
 
 @implementation TweaksViewController
@@ -275,12 +277,30 @@ static NSString * const kTweakCellID = @"TweakCell";
     if (idx >= (NSInteger)_installedTweaks.count) return;
     NSDictionary *tweak = _installedTweaks[idx];
 
-    // Check if exploit has been run
-    if (!_exploitRun && ![[NSUserDefaults standardUserDefaults] boolForKey:@"ExploitRun"]) {
-        [self showAlert:@"Error" message:@"Please run the exploit first before installing tweaks"];
+    // Check if exploit has been run in this session
+    if (!_exploitRun) {
+        // Store the pending tweak and run exploit first
+        _pendingTweak = tweak;
+        LogsViewController *logsVC = [[LogsViewController alloc] initWithCompletion:^{
+            // After exploit completes, continue with installation
+            [self installPendingTweak];
+        }];
+        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:logsVC];
+        [self presentViewController:nav animated:YES completion:nil];
         return;
     }
 
+    [self performTweakInstallation:tweak];
+}
+
+- (void)installPendingTweak {
+    if (_pendingTweak) {
+        [self performTweakInstallation:_pendingTweak];
+        _pendingTweak = nil;
+    }
+}
+
+- (void)performTweakInstallation:(NSDictionary *)tweak {
     NSError *error = nil;
     BOOL success = NO;
 
