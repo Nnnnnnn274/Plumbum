@@ -49,7 +49,13 @@
         _maxIOSVersion = dict[@"MaxIOSVersion"] ?: @"";
         _compatibleExploit = dict[@"CompatibleExploit"] ?: @[];
         _icon = dict[@"Icon"] ?: @"";
-        
+        _repositoryURL = dict[@"RepositoryURL"] ?: @"";
+        _headerImage = dict[@"HeaderImage"] ?: @"";
+        _caption = dict[@"Caption"] ?: @"";
+        _screenshot = dict[@"Screenshot"] ?: @[];
+        _compatibleOS = dict[@"CompatibleOS"] ?: @[@"iOS", @"iPadOS"];
+        _emuVar = [dict[@"EmuVar"] boolValue];
+
         _installStatus = PackageInstallStatusNotInstalled;
     }
     return self;
@@ -75,7 +81,13 @@
     if (_maxIOSVersion) dict[@"MaxIOSVersion"] = _maxIOSVersion;
     if (_compatibleExploit.count > 0) dict[@"CompatibleExploit"] = _compatibleExploit;
     if (_icon) dict[@"Icon"] = _icon;
-    
+    if (_repositoryURL) dict[@"RepositoryURL"] = _repositoryURL;
+    if (_headerImage) dict[@"HeaderImage"] = _headerImage;
+    if (_caption) dict[@"Caption"] = _caption;
+    if (_screenshot.count > 0) dict[@"Screenshot"] = _screenshot;
+    if (_compatibleOS.count > 0) dict[@"CompatibleOS"] = _compatibleOS;
+    dict[@"EmuVar"] = @(_emuVar);
+
     return [dict copy];
 }
 

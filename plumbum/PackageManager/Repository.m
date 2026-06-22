@@ -433,9 +433,28 @@
     
     NSLog(@"Parsing Misaka JSON with keys: %@", jsonDict.allKeys);
     
-    NSArray *repositoryContents = jsonDict[@"RepositoryContents"];
+    // Handle both direct RepositoryContents array and nested repository structure
+    NSArray *repositoryContents = nil;
+    
+    // Check if it's a repository structure with RepositoryContents
+    if ([jsonDict objectForKey:@"RepositoryContents"]) {
+        repositoryContents = jsonDict[@"RepositoryContents"];
+    } 
+    // Check if it's a repository wrapper
+    else if ([jsonDict objectForKey:@"Repository"]) {
+        NSDictionary *repo = jsonDict[@"Repository"];
+        if ([repo isKindOfClass:[NSDictionary class]]) {
+            repositoryContents = repo[@"RepositoryContents"];
+        }
+    }
+    // Check if it's an array directly
+    else if ([jsonDict isKindOfClass:[NSArray class]]) {
+        repositoryContents = (NSArray *)jsonDict;
+    }
+    
     if (!repositoryContents || ![repositoryContents isKindOfClass:[NSArray class]]) {
-        NSLog(@"Invalid Misaka JSON format: missing RepositoryContents");
+        NSLog(@"Invalid Misaka JSON format: missing or invalid RepositoryContents");
+        NSLog(@"Available keys: %@", jsonDict.allKeys);
         return [packages copy];
     }
     
@@ -443,46 +462,112 @@
     
     for (NSDictionary *packageDict in repositoryContents) {
         @autoreleasepool {
+            if (!packageDict || ![packageDict isKindOfClass:[NSDictionary class]]) {
+                NSLog(@"Skipping invalid package entry: %@", packageDict);
+                continue;
+            }
+            
             NSMutableDictionary *pkgDict = [NSMutableDictionary dictionary];
             
-            // Map Misaka JSON fields to PlumbumPackage fields
-            pkgDict[@"Package"] = packageDict[@"PackageID"] ?: @"";
-            pkgDict[@"Name"] = packageDict[@"Name"] ?: packageDict[@"PackageID"] ?: @"";
-            pkgDict[@"Description"] = packageDict[@"Description"] ?: @"";
+            // Map Misaka JSON fields to PlumbumPackage fields with proper nil handling
+            NSString *packageID = packageDict[@"PackageID"];
+            if (!packageID || ![packageID isKindOfClass:[NSString class]]) {
+                NSLog(@"Skipping package with missing or invalid PackageID: %@", packageDict);
+                continue;
+            }
             
-            // Get the latest release
+            pkgDict[@"Package"] = packageID;
+            
+            // Name with fallback to PackageID
+            NSString *name = packageDict[@"Name"];
+            if (name && [name isKindOfClass:[NSString class]] && name.length > 0) {
+                pkgDict[@"Name"] = name;
+            } else {
+                pkgDict[@"Name"] = packageID;
+            }
+            
+            // Description with safe handling
+            NSString *description = packageDict[@"Description"];
+            pkgDict[@"Description"] = (description && [description isKindOfClass:[NSString class]]) ? description : @"";
+            
+            // Get the latest release with proper validation
             id releases = packageDict[@"Releases"];
             if (releases && [releases isKindOfClass:[NSArray class]] && [(NSArray *)releases count] > 0) {
                 NSDictionary *latestRelease = [(NSArray *)releases firstObject];
-                pkgDict[@"Version"] = latestRelease[@"Version"] ?: @"1.0";
-                pkgDict[@"Filename"] = latestRelease[@"Package"] ?: @"";
-                pkgDict[@"PackageType"] = @"misaka"; // Mark as misaka package
+                if ([latestRelease isKindOfClass:[NSDictionary class]]) {
+                    NSString *version = latestRelease[@"Version"];
+                    pkgDict[@"Version"] = (version && [version isKindOfClass:[NSString class]]) ? version : @"1.0";
+                    
+                    NSString *packageFile = latestRelease[@"Package"];
+                    pkgDict[@"Filename"] = (packageFile && [packageFile isKindOfClass:[NSString class]]) ? packageFile : @"";
+                } else {
+                    pkgDict[@"Version"] = @"1.0";
+                    pkgDict[@"Filename"] = @"";
+                }
+                pkgDict[@"PackageType"] = @"misaka";
             } else {
                 pkgDict[@"Version"] = @"1.0";
+                pkgDict[@"Filename"] = @"";
                 pkgDict[@"PackageType"] = @"misaka";
             }
             
-            // Author info
+            // Author info with safe handling
             NSDictionary *authorDict = packageDict[@"Author"];
-            if (authorDict) {
-                pkgDict[@"Author"] = authorDict[@"Label"] ?: @"";
+            if (authorDict && [authorDict isKindOfClass:[NSDictionary class]]) {
+                NSString *authorLabel = authorDict[@"Label"];
+                pkgDict[@"Author"] = (authorLabel && [authorLabel isKindOfClass:[NSString class]]) ? authorLabel : @"Unknown";
+            } else {
+                pkgDict[@"Author"] = @"Unknown";
             }
             
-            // Section/Category
-            pkgDict[@"Section"] = packageDict[@"Category"] ?: @"Utilities";
+            // Section/Category with default
+            NSString *category = packageDict[@"Category"];
+            pkgDict[@"Section"] = (category && [category isKindOfClass:[NSString class]] && category.length > 0) ? category : @"Utilities";
             
-            // Additional metadata
-            pkgDict[@"MinIOSVersion"] = packageDict[@"MinIOSVersion"] ?: @"";
-            pkgDict[@"MaxIOSVersion"] = packageDict[@"MaxIOSVersion"] ?: @"";
-            pkgDict[@"CompatibleExploit"] = packageDict[@"compatibleExploit"] ?: @[];
+            // Additional metadata with safe handling
+            NSString *minIOS = packageDict[@"MinIOSVersion"];
+            pkgDict[@"MinIOSVersion"] = (minIOS && [minIOS isKindOfClass:[NSString class]]) ? minIOS : @"";
             
-            // Icon
-            pkgDict[@"Icon"] = packageDict[@"Icon"] ?: @"";
+            NSString *maxIOS = packageDict[@"MaxIOSVersion"];
+            pkgDict[@"MaxIOSVersion"] = (maxIOS && [maxIOS isKindOfClass:[NSString class]]) ? maxIOS : @"";
+            
+            id compatibleExploit = packageDict[@"compatibleExploit"];
+            pkgDict[@"CompatibleExploit"] = (compatibleExploit && [compatibleExploit isKindOfClass:[NSArray class]]) ? compatibleExploit : @[];
+            
+            // Icon with default
+            NSString *icon = packageDict[@"Icon"];
+            pkgDict[@"Icon"] = (icon && [icon isKindOfClass:[NSString class]] && icon.length > 0) ? icon : @"";
+            
+            // Repository URL
+            NSString *repoURL = packageDict[@"RepositoryURL"];
+            pkgDict[@"RepositoryURL"] = (repoURL && [repoURL isKindOfClass:[NSString class]]) ? repoURL : @"";
+            
+            // Header image
+            NSString *headerImage = packageDict[@"HeaderImage"];
+            pkgDict[@"HeaderImage"] = (headerImage && [headerImage isKindOfClass:[NSString class]]) ? headerImage : @"";
+            
+            // Caption
+            NSString *caption = packageDict[@"Caption"];
+            pkgDict[@"Caption"] = (caption && [caption isKindOfClass:[NSString class]]) ? caption : @"";
+            
+            // Screenshots
+            id screenshots = packageDict[@"Screenshot"];
+            pkgDict[@"Screenshot"] = (screenshots && [screenshots isKindOfClass:[NSArray class]]) ? screenshots : @[];
+            
+            // Compatible OS
+            id compatibleOS = packageDict[@"CompatibleOS"];
+            pkgDict[@"CompatibleOS"] = (compatibleOS && [compatibleOS isKindOfClass:[NSArray class]]) ? compatibleOS : @[@"iOS", @"iPadOS"];
+            
+            // EmuVar
+            NSNumber *emuVar = packageDict[@"EmuVar"];
+            pkgDict[@"EmuVar"] = (emuVar && [emuVar isKindOfClass:[NSNumber class]]) ? emuVar : @NO;
             
             PlumbumPackage *package = [[PlumbumPackage alloc] initWithDictionary:pkgDict];
             if (package) {
                 [packages addObject:package];
-                NSLog(@"Added package: %@", package.name);
+                NSLog(@"Added package: %@ (ID: %@)", package.name, package.packageID);
+            } else {
+                NSLog(@"Failed to create package from dict: %@", pkgDict);
             }
         }
     }

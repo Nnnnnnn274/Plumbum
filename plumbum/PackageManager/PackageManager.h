@@ -37,6 +37,12 @@ typedef NS_ENUM(NSInteger, PackageInstallStatus) {
 @property (nonatomic, strong) NSString *maxIOSVersion;
 @property (nonatomic, strong) NSArray<NSString *> *compatibleExploit;
 @property (nonatomic, strong) NSString *icon;
+@property (nonatomic, strong) NSString *repositoryURL;
+@property (nonatomic, strong) NSString *headerImage;
+@property (nonatomic, strong) NSString *caption;
+@property (nonatomic, strong) NSArray<NSString *> *screenshot;
+@property (nonatomic, strong) NSArray<NSString *> *compatibleOS;
+@property (nonatomic, assign) BOOL emuVar;
 
 - (instancetype)initWithDictionary:(NSDictionary *)dict;
 - (NSDictionary *)toDictionary;
