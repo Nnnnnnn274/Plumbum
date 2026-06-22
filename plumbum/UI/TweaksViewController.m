@@ -5,16 +5,15 @@
 
 #import "TweaksViewController.h"
 #import "SileoColors.h"
-#import "PackageManager.h"
-#import "MisakaPackage.h"
-#import "LogsViewController.h"
+#import "../JSExecutor/JSExecutor.h"
+#import "../PackageManager/JSBuiltInTweaks.h"
 
 static NSString * const kTweakCellID = @"TweakCell";
 
 @interface TweakCell : UITableViewCell
 @property (nonatomic, strong) UILabel *nameLabel;
-@property (nonatomic, strong) UILabel *typeLabel;
-@property (nonatomic, strong) UIButton *installButton;
+@property (nonatomic, strong) UILabel *descriptionLabel;
+@property (nonatomic, strong) UIButton *applyButton;
 @end
 
 @implementation TweakCell {
@@ -48,23 +47,24 @@ static NSString * const kTweakCellID = @"TweakCell";
         _nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
         [_cardView addSubview:_nameLabel];
 
-        _typeLabel = [[UILabel alloc] init];
-        _typeLabel.font = [UIFont monospacedSystemFontOfSize:11 weight:UIFontWeightRegular];
-        _typeLabel.textColor = [SileoColors tertiaryText];
-        _typeLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        [_cardView addSubview:_typeLabel];
+        _descriptionLabel = [[UILabel alloc] init];
+        _descriptionLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightRegular];
+        _descriptionLabel.textColor = [SileoColors secondaryText];
+        _descriptionLabel.numberOfLines = 2;
+        _descriptionLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        [_cardView addSubview:_descriptionLabel];
 
-        _installButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        [_installButton setTitle:@"Install" forState:UIControlStateNormal];
-        _installButton.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
-        _installButton.layer.cornerRadius = 8;
-        _installButton.layer.masksToBounds = YES;
-        [_installButton setTitleColor:[SileoColors sileoBlue] forState:UIControlStateNormal];
-        _installButton.backgroundColor = [[SileoColors sileoBlue] colorWithAlphaComponent:0.1];
-        _installButton.layer.borderWidth = 0.5;
-        _installButton.layer.borderColor = [[SileoColors sileoBlue] colorWithAlphaComponent:0.3].CGColor;
-        _installButton.translatesAutoresizingMaskIntoConstraints = NO;
-        [_cardView addSubview:_installButton];
+        _applyButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        [_applyButton setTitle:@"Apply" forState:UIControlStateNormal];
+        _applyButton.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
+        _applyButton.layer.cornerRadius = 8;
+        _applyButton.layer.masksToBounds = YES;
+        [_applyButton setTitleColor:[SileoColors sileoGreen] forState:UIControlStateNormal];
+        _applyButton.backgroundColor = [[SileoColors sileoGreen] colorWithAlphaComponent:0.1];
+        _applyButton.layer.borderWidth = 0.5;
+        _applyButton.layer.borderColor = [[SileoColors sileoGreen] colorWithAlphaComponent:0.3].CGColor;
+        _applyButton.translatesAutoresizingMaskIntoConstraints = NO;
+        [_cardView addSubview:_applyButton];
 
         [NSLayoutConstraint activateConstraints:@[
             [_cardView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:4],
@@ -79,16 +79,16 @@ static NSString * const kTweakCellID = @"TweakCell";
 
             [_nameLabel.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor constant:12],
             [_nameLabel.topAnchor constraintEqualToAnchor:_cardView.topAnchor constant:14],
-            [_nameLabel.trailingAnchor constraintEqualToAnchor:_installButton.leadingAnchor constant:-12],
+            [_nameLabel.trailingAnchor constraintEqualToAnchor:_applyButton.leadingAnchor constant:-12],
 
-            [_typeLabel.leadingAnchor constraintEqualToAnchor:_nameLabel.leadingAnchor],
-            [_typeLabel.topAnchor constraintEqualToAnchor:_nameLabel.bottomAnchor constant:3],
-            [_typeLabel.bottomAnchor constraintEqualToAnchor:_cardView.bottomAnchor constant:-14],
+            [_descriptionLabel.leadingAnchor constraintEqualToAnchor:_nameLabel.leadingAnchor],
+            [_descriptionLabel.topAnchor constraintEqualToAnchor:_nameLabel.bottomAnchor constant:3],
+            [_descriptionLabel.bottomAnchor constraintEqualToAnchor:_cardView.bottomAnchor constant:-14],
 
-            [_installButton.trailingAnchor constraintEqualToAnchor:_cardView.trailingAnchor constant:-12],
-            [_installButton.centerYAnchor constraintEqualToAnchor:_cardView.centerYAnchor],
-            [_installButton.widthAnchor constraintEqualToConstant:74],
-            [_installButton.heightAnchor constraintEqualToConstant:30],
+            [_applyButton.trailingAnchor constraintEqualToAnchor:_cardView.trailingAnchor constant:-12],
+            [_applyButton.centerYAnchor constraintEqualToAnchor:_cardView.centerYAnchor],
+            [_applyButton.widthAnchor constraintEqualToConstant:74],
+            [_applyButton.heightAnchor constraintEqualToConstant:30],
         ]];
     }
     return self;
@@ -105,12 +105,10 @@ static NSString * const kTweakCellID = @"TweakCell";
 
 // ─────────────────────────────────────────────
 
-@interface TweaksViewController () <UIDocumentPickerDelegate>
+@interface TweaksViewController () <UITableViewDataSource, UITableViewDelegate>
 @property (nonatomic, strong) UITableView *tableView;
-@property (nonatomic, strong) NSMutableArray<NSDictionary *> *installedTweaks;
-@property (nonatomic, strong) UIButton *addTweakButton;
+@property (nonatomic, strong) NSArray<JSBuiltInTweak *> *builtInTweaks;
 @property (nonatomic, assign) BOOL exploitRun;
-@property (nonatomic, strong) NSDictionary *pendingTweak;
 @end
 
 @implementation TweaksViewController
@@ -119,11 +117,11 @@ static NSString * const kTweakCellID = @"TweakCell";
     [super viewDidLoad];
     self.view.backgroundColor = [SileoColors background];
     self.title = @"Tweaks";
-    _installedTweaks = [NSMutableArray array];
+    _builtInTweaks = [[JSBuiltInTweaks sharedTweaks] allTweaks];
+    _exploitRun = [[NSUserDefaults standardUserDefaults] boolForKey:@"ExploitRun"];
 
     [self setupViews];
     [self configureNavigationBar];
-    [self loadInstalledTweaks];
 
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(exploitCompleted:)
@@ -138,24 +136,11 @@ static NSString * const kTweakCellID = @"TweakCell";
 - (void)exploitCompleted:(NSNotification *)notification {
     dispatch_async(dispatch_get_main_queue(), ^{
         self->_exploitRun = YES;
-        self->_addTweakButton.hidden = NO;
+        [self->_tableView reloadData];
     });
 }
 
 - (void)setupViews {
-    // Add tweak button (hidden until exploit runs)
-    _addTweakButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    [_addTweakButton setTitle:@"Add Tweak" forState:UIControlStateNormal];
-    _addTweakButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
-    _addTweakButton.layer.cornerRadius = 14;
-    _addTweakButton.layer.masksToBounds = YES;
-    _addTweakButton.backgroundColor = [SileoColors sileoBlue];
-    [_addTweakButton setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
-    [_addTweakButton addTarget:self action:@selector(addTweak) forControlEvents:UIControlEventTouchUpInside];
-    _addTweakButton.translatesAutoresizingMaskIntoConstraints = NO;
-    _addTweakButton.hidden = ![[NSUserDefaults standardUserDefaults] boolForKey:@"ExploitRun"];
-    [self.view addSubview:_addTweakButton];
-
     // Table view
     _tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     _tableView.dataSource = self;
@@ -168,12 +153,7 @@ static NSString * const kTweakCellID = @"TweakCell";
     [self.view addSubview:_tableView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_addTweakButton.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:12],
-        [_addTweakButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:12],
-        [_addTweakButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-12],
-        [_addTweakButton.heightAnchor constraintEqualToConstant:50],
-
-        [_tableView.topAnchor constraintEqualToAnchor:_addTweakButton.bottomAnchor constant:8],
+        [_tableView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:12],
         [_tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [_tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [_tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
@@ -193,76 +173,44 @@ static NSString * const kTweakCellID = @"TweakCell";
     self.navigationController.navigationBar.tintColor = [SileoColors sileoBlue];
 }
 
-- (void)loadInstalledTweaks {
-    [_tableView reloadData];
-}
-
-- (void)addTweak {
-    NSArray *documentTypes = @[@"public.data"];
-    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc]
-        initWithDocumentTypes:documentTypes
-                       inMode:UIDocumentPickerModeImport];
-    picker.delegate = self;
-    picker.allowsMultipleSelection = NO;
-    [self presentViewController:picker animated:YES completion:nil];
-}
-
-#pragma mark - UIDocumentPickerDelegate
-
-- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
-    if (urls.count == 0) return;
-    NSURL *url = urls.firstObject;
-    NSString *ext = url.pathExtension.lowercaseString;
-
-    if (![ext isEqualToString:@"misaka"] && ![ext isEqualToString:@"plumbum"]) {
-        [self showAlert:@"Invalid File" message:@"Please select a .misaka or .plumbum file"];
-        return;
-    }
-    [self importTweakFromURL:url];
-}
-
-- (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller {}
-
-- (void)importTweakFromURL:(NSURL *)url {
-    BOOL accessing = [url startAccessingSecurityScopedResource];
-    NSError *error = nil;
-    NSData *data = [NSData dataWithContentsOfURL:url options:0 error:&error];
-    if (accessing) [url stopAccessingSecurityScopedResource];
-
-    if (error || !data) {
-        [self showAlert:@"Import Failed" message:@"Could not read the tweak file"];
-        return;
-    }
-
-    NSString *docs = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-    NSString *dest = [docs stringByAppendingPathComponent:url.lastPathComponent];
-    if ([data writeToFile:dest options:NSDataWritingAtomic error:&error]) {
-        NSDictionary *info = @{
-            @"name": [url.lastPathComponent stringByDeletingPathExtension],
-            @"path": dest,
-            @"type": url.pathExtension.lowercaseString
-        };
-        [_installedTweaks addObject:info];
-        [_tableView reloadData];
-        [self showAlert:@"Imported" message:@"Tweak is ready to install"];
-    } else {
-        [self showAlert:@"Import Failed" message:error.localizedDescription ?: @"Unknown error"];
-    }
-}
-
 #pragma mark - UITableViewDataSource
 
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
+    NSSet *categories = [NSSet setWithArray:[_builtInTweaks valueForKey:@"category"]];
+    return categories.count;
+}
+
+- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
+    NSSet *categories = [NSSet setWithArray:[_builtInTweaks valueForKey:@"category"]];
+    NSArray *sortedCategories = [[categories allObjects] sortedArrayUsingSelector:@selector(compare:)];
+    return sortedCategories[section];
+}
+
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return _installedTweaks.count;
+    NSSet *categories = [NSSet setWithArray:[_builtInTweaks valueForKey:@"category"]];
+    NSArray *sortedCategories = [[categories allObjects] sortedArrayUsingSelector:@selector(compare:)];
+    NSString *category = sortedCategories[section];
+    return [[_builtInTweaks filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"category == %@", category]] count];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     TweakCell *cell = [tableView dequeueReusableCellWithIdentifier:kTweakCellID forIndexPath:indexPath];
-    NSDictionary *tweak = _installedTweaks[indexPath.row];
-    cell.nameLabel.text = tweak[@"name"];
-    cell.typeLabel.text = [NSString stringWithFormat:@".%@", tweak[@"type"]];
-    cell.installButton.tag = indexPath.row;
-    [cell.installButton addTarget:self action:@selector(installTweak:) forControlEvents:UIControlEventTouchUpInside];
+    
+    NSSet *categories = [NSSet setWithArray:[_builtInTweaks valueForKey:@"category"]];
+    NSArray *sortedCategories = [[categories allObjects] sortedArrayUsingSelector:@selector(compare:)];
+    NSString *category = sortedCategories[indexPath.section];
+    NSArray *tweaksInCategory = [_builtInTweaks filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"category == %@", category]];
+    JSBuiltInTweak *tweak = tweaksInCategory[indexPath.row];
+    
+    cell.nameLabel.text = tweak.name;
+    cell.descriptionLabel.text = tweak.description;
+    cell.applyButton.tag = indexPath.section * 1000 + indexPath.row;
+    [cell.applyButton addTarget:self action:@selector(applyTweak:) forControlEvents:UIControlEventTouchUpInside];
+    
+    // Disable button if exploit hasn't run
+    cell.applyButton.enabled = _exploitRun;
+    cell.applyButton.alpha = _exploitRun ? 1.0 : 0.5;
+    
     return cell;
 }
 
@@ -272,58 +220,35 @@ static NSString * const kTweakCellID = @"TweakCell";
     return 72;
 }
 
-- (void)installTweak:(UIButton *)sender {
-    NSInteger idx = sender.tag;
-    if (idx >= (NSInteger)_installedTweaks.count) return;
-    NSDictionary *tweak = _installedTweaks[idx];
-
-    // Check if exploit has been run in this session
+- (void)applyTweak:(UIButton *)sender {
     if (!_exploitRun) {
-        // Store the pending tweak and run exploit first
-        _pendingTweak = tweak;
-        LogsViewController *logsVC = [[LogsViewController alloc] initWithCompletion:^{
-            // After exploit completes, continue with installation
-            [self installPendingTweak];
-        }];
-        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:logsVC];
-        [self presentViewController:nav animated:YES completion:nil];
+        [self showAlert:@"Error" message:@"Please run the exploit first"];
         return;
     }
-
-    [self performTweakInstallation:tweak];
-}
-
-- (void)installPendingTweak {
-    if (_pendingTweak) {
-        [self performTweakInstallation:_pendingTweak];
-        _pendingTweak = nil;
+    
+    NSInteger section = sender.tag / 1000;
+    NSInteger row = sender.tag % 1000;
+    
+    NSSet *categories = [NSSet setWithArray:[_builtInTweaks valueForKey:@"category"]];
+    NSArray *sortedCategories = [[categories allObjects] sortedArrayUsingSelector:@selector(compare:)];
+    NSString *category = sortedCategories[section];
+    NSArray *tweaksInCategory = [_builtInTweaks filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"category == %@", category]];
+    
+    if (row >= (NSInteger)tweaksInCategory.count) return;
+    JSBuiltInTweak *tweak = tweaksInCategory[row];
+    
+    NSString *scriptContent = [[JSBuiltInTweaks sharedTweaks] scriptContentForTweak:tweak];
+    
+    if (!scriptContent || scriptContent.length == 0) {
+        [self showAlert:@"Error" message:@"Failed to load tweak script"];
+        return;
     }
-}
-
-- (void)performTweakInstallation:(NSDictionary *)tweak {
-    NSError *error = nil;
-    BOOL success = NO;
-
-    if ([tweak[@"type"] isEqualToString:@"misaka"]) {
-        MisakaPackageManager *mm = [[MisakaPackageManager alloc] init];
-        success = [mm installMisakaPackage:tweak[@"path"] error:&error];
+    
+    NSError *execError = nil;
+    if ([[JSExecutor sharedExecutor] executeJavaScriptFromString:scriptContent error:&execError]) {
+        [self showAlert:@"Success" message:[NSString stringWithFormat:@"%@ applied successfully", tweak.name]];
     } else {
-        PackageManager *pm = [PackageManager sharedManager];
-        [pm createDirectoriesIfNeeded];
-        [pm loadInstalledPackages];
-        
-        PlumbumPackage *pkg = [pm loadPackageFromPath:tweak[@"path"] error:&error];
-        if (pkg) {
-            success = [pm installPackage:pkg error:&error];
-        } else {
-            success = NO;
-        }
-    }
-
-    if (success) {
-        [self showAlert:@"Installed" message:@"Tweak installed successfully"];
-    } else {
-        [self showAlert:@"Install Failed" message:error.localizedDescription ?: @"Unknown error"];
+        [self showAlert:@"Error" message:execError.localizedDescription ?: @"Failed to apply tweak"];
     }
 }
 
