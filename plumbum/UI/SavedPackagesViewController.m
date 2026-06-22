@@ -6,6 +6,7 @@
 //
 
 #import "SavedPackagesViewController.h"
+#import "PackageDetailViewController.h"
 #import "SileoColors.h"
 #import "../PackageManager/PackageManager.h"
 
