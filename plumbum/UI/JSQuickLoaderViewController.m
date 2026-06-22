@@ -70,7 +70,7 @@
     _loadButton.layer.masksToBounds = YES;
     _loadButton.backgroundColor = [SileoColors sileoGreen];
     [_loadButton setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
-    [_loadButton addTarget:self action:@selector loadSelectedScript) forControlEvents:UIControlEventTouchUpInside];
+    [_loadButton addTarget:self action:@selector(loadSelectedScript) forControlEvents:UIControlEventTouchUpInside];
     _loadButton.translatesAutoresizingMaskIntoConstraints = NO;
     _loadButton.enabled = NO;
     _loadButton.alpha = 0.5;
@@ -83,7 +83,7 @@
     _tableView.backgroundColor = [SileoColors background];
     _tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     _tableView.translatesAutoresizingMaskIntoConstraints = NO;
-    _tableView.registerClass:[UITableViewCell class] forCellReuseIdentifier:@"ScriptCell"];
+    [_tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"ScriptCell"];
     [self.view addSubview:_tableView];
     
     [NSLayoutConstraint activateConstraints:@[
