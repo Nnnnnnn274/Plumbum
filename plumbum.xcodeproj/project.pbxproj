@@ -81,6 +81,7 @@
 				XPF/src/non_ppl.c,
 				XPF/src/ppl.c,
 				XPF/src/xpf.c,
+				BuiltInTweaks,
 			);
 			target = AAA297762F72D439000B5902 /* plumbum */;
 		};
@@ -91,10 +92,12 @@
 			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
 			attributesByRelativePath = {
 				XPF/output/ios/libxpf.dylib = (CodeSignOnCopy, );
+				BuiltInTweaks = ( );
 			};
 			buildPhase = AAA2989D2F7418CC000B5902 /* CopyFiles */;
 			membershipExceptions = (
 				XPF/output/ios/libxpf.dylib,
+				BuiltInTweaks,
 			);
 		};
 /* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */

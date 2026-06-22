@@ -8,13 +8,17 @@
 #import "SileoColors.h"
 #import "../JSExecutor/JSExecutor.h"
 #import "../PackageManager/JSRepository.h"
+#import "../PackageManager/JSBuiltInTweaks.h"
 
 @interface JSQuickLoaderViewController () <UITableViewDataSource, UITableViewDelegate, UIDocumentPickerDelegate>
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSMutableArray<NSDictionary *> *availableScripts;
+@property (nonatomic, strong) NSArray<JSBuiltInTweak *> *builtInTweaks;
 @property (nonatomic, strong) UIButton *loadButton;
 @property (nonatomic, strong) UIButton *addRepoButton;
+@property (nonatomic, strong) UISegmentedControl *segmentedControl;
 @property (nonatomic, assign) BOOL exploitRun;
+@property (nonatomic, assign) BOOL showingBuiltIn;
 @end
 
 @implementation JSQuickLoaderViewController
@@ -24,6 +28,8 @@
     self.view.backgroundColor = [SileoColors background];
     self.title = @"JS QuickLoader";
     _availableScripts = [NSMutableArray array];
+    _builtInTweaks = [[JSBuiltInTweaks sharedTweaks] allTweaks];
+    _showingBuiltIn = YES;
     
     [self setupViews];
     [self configureNavigationBar];
@@ -50,7 +56,14 @@
 - (void)setupViews {
     CGFloat pad = 20.0;
     
-    // Add repo button
+    // Segmented control for switching between Built-in and Repo scripts
+    _segmentedControl = [[UISegmentedControl alloc] initWithItems:@[@"Built-in Tweaks", @"Repo Scripts"]];
+    _segmentedControl.selectedSegmentIndex = 0;
+    [_segmentedControl addTarget:self action:@selector(segmentChanged:) forControlEvents:UIControlEventValueChanged];
+    _segmentedControl.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:_segmentedControl];
+    
+    // Add repo button (only shown for repo scripts)
     _addRepoButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [_addRepoButton setTitle:@"Add JS Repository" forState:UIControlStateNormal];
     _addRepoButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
@@ -60,6 +73,7 @@
     [_addRepoButton setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
     [_addRepoButton addTarget:self action:@selector(addRepository) forControlEvents:UIControlEventTouchUpInside];
     _addRepoButton.translatesAutoresizingMaskIntoConstraints = NO;
+    _addRepoButton.hidden = YES;
     [self.view addSubview:_addRepoButton];
     
     // Load button
@@ -87,7 +101,12 @@
     [self.view addSubview:_tableView];
     
     [NSLayoutConstraint activateConstraints:@[
-        [_addRepoButton.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:12],
+        [_segmentedControl.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:12],
+        [_segmentedControl.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:pad],
+        [_segmentedControl.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-pad],
+        [_segmentedControl.heightAnchor constraintEqualToConstant:32],
+        
+        [_addRepoButton.topAnchor constraintEqualToAnchor:_segmentedControl.bottomAnchor constant:8],
         [_addRepoButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:pad],
         [_addRepoButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-pad],
         [_addRepoButton.heightAnchor constraintEqualToConstant:50],
@@ -115,6 +134,21 @@
         self.navigationController.navigationBar.scrollEdgeAppearance = appearance;
     }
     self.navigationController.navigationBar.tintColor = [SileoColors sileoBlue];
+}
+
+- (void)segmentChanged:(UISegmentedControl *)sender {
+    _showingBuiltIn = (sender.selectedSegmentIndex == 0);
+    _addRepoButton.hidden = _showingBuiltIn;
+    
+    if (_showingBuiltIn) {
+        _loadButton.enabled = _exploitRun;
+        _loadButton.alpha = _exploitRun ? 1.0 : 0.5;
+    } else {
+        _loadButton.enabled = NO;
+        _loadButton.alpha = 0.5;
+    }
+    
+    [_tableView reloadData];
 }
 
 - (void)loadScripts {
@@ -168,65 +202,132 @@
         return;
     }
     
-    NSDictionary *script = _availableScripts[selectedRow.row];
-    NSString *scriptURL = script[@"url"];
-    
-    if (!scriptURL || scriptURL.length == 0) {
-        [self showAlert:@"Error" message:@"Script URL is missing"];
-        return;
+    if (_showingBuiltIn) {
+        // Execute built-in tweak
+        JSBuiltInTweak *tweak = _builtInTweaks[selectedRow.row];
+        NSString *scriptContent = [[JSBuiltInTweaks sharedTweaks] scriptContentForTweak:tweak];
+        
+        if (!scriptContent || scriptContent.length == 0) {
+            [self showAlert:@"Error" message:@"Failed to load built-in tweak script"];
+            return;
+        }
+        
+        NSError *execError = nil;
+        if ([[JSExecutor sharedExecutor] executeJavaScriptFromString:scriptContent error:&execError]) {
+            [self showAlert:@"Success" message:[NSString stringWithFormat:@"%@ executed successfully", tweak.name]];
+        } else {
+            [self showAlert:@"Error" message:execError.localizedDescription ?: @"Failed to execute tweak"];
+        }
+    } else {
+        // Execute repo script
+        NSDictionary *script = _availableScripts[selectedRow.row];
+        NSString *scriptURL = script[@"url"];
+        
+        if (!scriptURL || scriptURL.length == 0) {
+            [self showAlert:@"Error" message:@"Script URL is missing"];
+            return;
+        }
+        
+        // Download and execute the script
+        NSURL *url = [NSURL URLWithString:scriptURL];
+        if (!url) {
+            [self showAlert:@"Error" message:@"Invalid script URL"];
+            return;
+        }
+        
+        UIAlertController *loadingAlert = [UIAlertController alertControllerWithTitle:@"Loading"
+                                                                             message:@"Downloading and executing script..."
+                                                                      preferredStyle:UIAlertControllerStyleAlert];
+        [self presentViewController:loadingAlert animated:YES completion:nil];
+        
+        NSURLSession *session = [NSURLSession sharedSession];
+        NSURLSessionDataTask *task = [session dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [loadingAlert dismissViewControllerAnimated:YES completion:nil];
+                
+                if (error || !data) {
+                    [self showAlert:@"Error" message:@"Failed to download script"];
+                    return;
+                }
+                
+                // Save to temp file and execute
+                NSString *tempDir = NSTemporaryDirectory();
+                NSString *tempPath = [tempDir stringByAppendingPathComponent:@"script.js"];
+                [data writeToFile:tempPath atomically:YES];
+                
+                NSError *execError = nil;
+                if ([[JSExecutor sharedExecutor] executeJavaScriptFromFile:tempPath error:&execError]) {
+                    [self showAlert:@"Success" message:@"Script executed successfully"];
+                } else {
+                    [self showAlert:@"Error" message:execError.localizedDescription ?: @"Failed to execute script"];
+                }
+            });
+        }];
+        
+        [task resume];
     }
-    
-    // Download and execute the script
-    NSURL *url = [NSURL URLWithString:scriptURL];
-    if (!url) {
-        [self showAlert:@"Error" message:@"Invalid script URL"];
-        return;
-    }
-    
-    UIAlertController *loadingAlert = [UIAlertController alertControllerWithTitle:@"Loading"
-                                                                         message:@"Downloading and executing script..."
-                                                                  preferredStyle:UIAlertControllerStyleAlert];
-    [self presentViewController:loadingAlert animated:YES completion:nil];
-    
-    NSURLSession *session = [NSURLSession sharedSession];
-    NSURLSessionDataTask *task = [session dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [loadingAlert dismissViewControllerAnimated:YES completion:nil];
-            
-            if (error || !data) {
-                [self showAlert:@"Error" message:@"Failed to download script"];
-                return;
-            }
-            
-            // Save to temp file and execute
-            NSString *tempDir = NSTemporaryDirectory();
-            NSString *tempPath = [tempDir stringByAppendingPathComponent:@"script.js"];
-            [data writeToFile:tempPath atomically:YES];
-            
-            NSError *execError = nil;
-            if ([[JSExecutor sharedExecutor] executeJavaScriptFromFile:tempPath error:&execError]) {
-                [self showAlert:@"Success" message:@"Script executed successfully"];
-            } else {
-                [self showAlert:@"Error" message:execError.localizedDescription ?: @"Failed to execute script"];
-            }
-        });
-    }];
-    
-    [task resume];
 }
 
 #pragma mark - UITableViewDataSource
 
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
+    if (_showingBuiltIn) {
+        // Group built-in tweaks by category
+        NSSet *categories = [NSSet setWithArray:[_builtInTweaks valueForKey:@"category"]];
+        return categories.count;
+    }
+    return 1;
+}
+
+- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
+    if (_showingBuiltIn) {
+        NSSet *categories = [NSSet setWithArray:[_builtInTweaks valueForKey:@"category"]];
+        NSArray *sortedCategories = [categories sortedArrayUsingSelector:@selector(compare:)];
+        return sortedCategories[section];
+    }
+    return @"Repository Scripts";
+}
+
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    if (_showingBuiltIn) {
+        NSSet *categories = [NSSet setWithArray:[_builtInTweaks valueForKey:@"category"]];
+        NSArray *sortedCategories = [categories sortedArrayUsingSelector:@selector(compare:)];
+        NSString *category = sortedCategories[section];
+        return [[_builtInTweaks filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"category == %@", category]] count];
+    }
     return _availableScripts.count;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"ScriptCell" forIndexPath:indexPath];
     
-    NSDictionary *script = _availableScripts[indexPath.row];
-    cell.textLabel.text = script[@"name"] ?: script[@"id"];
-    cell.detailTextLabel.text = [NSString stringWithFormat:@"%@ by %@", script[@"description"] ?: @"", script[@"author"] ?: @"Unknown"];
+    if (_showingBuiltIn) {
+        NSSet *categories = [NSSet setWithArray:[_builtInTweaks valueForKey:@"category"]];
+        NSArray *sortedCategories = [categories sortedArrayUsingSelector:@selector(compare:)];
+        NSString *category = sortedCategories[indexPath.section];
+        NSArray *tweaksInCategory = [_builtInTweaks filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"category == %@", category]];
+        JSBuiltInTweak *tweak = tweaksInCategory[indexPath.row];
+        
+        cell.textLabel.text = tweak.name;
+        cell.detailTextLabel.text = tweak.description;
+        
+        // Add badges for beta/experimental
+        NSString *badge = @"";
+        if (tweak.isExperimental) {
+            badge = @"⚠︎ Experimental";
+        } else if (tweak.isBeta) {
+            badge = @"β Beta";
+        }
+        
+        if (badge.length > 0) {
+            cell.textLabel.text = [NSString stringWithFormat:@"%@ [%@]", tweak.name, badge];
+        }
+    } else {
+        NSDictionary *script = _availableScripts[indexPath.row];
+        cell.textLabel.text = script[@"name"] ?: script[@"id"];
+        cell.detailTextLabel.text = [NSString stringWithFormat:@"%@ by %@", script[@"description"] ?: @"", script[@"author"] ?: @"Unknown"];
+    }
+    
     cell.backgroundColor = [SileoColors secondaryBackground];
     cell.textLabel.textColor = [SileoColors primaryText];
     cell.detailTextLabel.textColor = [SileoColors secondaryText];
