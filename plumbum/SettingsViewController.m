@@ -37,8 +37,8 @@
 #import "installer/PackageCatalog.h"
 #import "installer/PackageQueue.h"
 // #import "docs/DocsViewController.h"  // File not available
-#import "PatreonAuth.h"
-#import "UpdateChecker.h"
+// #import "PatreonAuth.h"  // File not available
+// #import "UpdateChecker.h"  // File not available
 #import "SBLArchiveExtractor.h"
 #import "NiceBarSettingsSupport.h"
 #import <WebKit/WebKit.h>
