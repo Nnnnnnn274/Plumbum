@@ -259,7 +259,7 @@ static NSString * const kTweakCellID = @"TweakCell";
 }
 
 - (void)applyTweakWithIdentifier:(NSString *)identifier name:(NSString *)name {
-    printf("[TWEAK] Applying tweak: %@ (%@)\n", name, identifier);
+    printf("[TWEAK] Applying tweak: %s (%s)\n", [name UTF8String], [identifier UTF8String]);
     
     // TODO: Implement actual tweak function calls
     // Each tweak has its own apply function, e.g.:
@@ -268,7 +268,7 @@ static NSString * const kTweakCellID = @"TweakCell";
     // etc.
     
     // For now, just log success
-    printf("[TWEAK] Successfully applied: %@\n", name);
+    printf("[TWEAK] Successfully applied: %s\n", [name UTF8String]);
     
     [self showAlert:@"Success" message:[NSString stringWithFormat:@"%@ applied successfully", name]];
 }
