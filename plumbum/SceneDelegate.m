@@ -6,7 +6,6 @@
 //
 
 #import "SceneDelegate.h"
-#import "LogsViewController.h"
 #import "MainTabBarController.h"
 
 @interface SceneDelegate ()
@@ -20,9 +19,9 @@
     if (!self.window) {
         self.window = [[UIWindow alloc] initWithWindowScene:(UIWindowScene *)scene];
         
-        // Show LogsViewController on launch to run exploit
-        LogsViewController *logsVC = [[LogsViewController alloc] init];
-        self.window.rootViewController = logsVC;
+        // Show MainTabBarController on launch
+        MainTabBarController *tabBarController = [[MainTabBarController alloc] init];
+        self.window.rootViewController = tabBarController;
         
         [self.window makeKeyAndVisible];
     }

@@ -1,6 +1,6 @@
 //
 //  Exception.h
-//  plumbum
+//  Cyanide
 //
 //  Created by seo on 4/4/26.
 //
@@ -32,5 +32,6 @@ typedef struct {
 } __attribute__((packed)) ExceptionReply;
 
 mach_port_t create_exception_port(void);
+void destroy_exception_port(mach_port_t exceptionPort);
 bool wait_exception(mach_port_t exceptionPort, ExceptionMessage *excBuffer, int timeout, bool debug);
 void reply_with_state(ExceptionMessage *exc, arm_thread_state64_internal *state);

@@ -1,6 +1,6 @@
 //
 //  PAC.m
-//  plumbum
+//  Cyanide
 //
 //  Created by seo on 4/4/26.
 //
@@ -73,20 +73,20 @@ uint64_t find_pacia_gadget(void)
     uint8_t *searchBase = (uint8_t *)(uintptr_t)symAddr;
     for (size_t offset = 0; offset + sizeof(paciaGadgetOpcodes) <= 0x1000; offset += 4) {
         if (memcmp(searchBase + offset, paciaGadgetOpcodes, sizeof(paciaGadgetOpcodes)) == 0) {
-            printf("[%s:%d] found pacia gadget, gadget addr = 0x%llx\n", __FUNCTION__, __LINE__, symAddr + offset);
             return symAddr + offset;
         }
     }
-    printf("[%s:%d] couldn't find pacia gadget :(\n", __FUNCTION__, __LINE__);
+    printf("[%s:%d] pacia gadget not found\n", __FUNCTION__, __LINE__);
     return 0;
 }
 
 void pac_cleanup(mach_port_t pacThread, mach_port_t exceptionPort, void *stack)
 {
-    if (pacThread != MACH_PORT_NULL)
+    if (MACH_PORT_VALID(pacThread)) {
         thread_terminate(pacThread);
-    if (exceptionPort != MACH_PORT_NULL)
-        mach_port_destruct(mach_task_self_, exceptionPort, 0, 0);
+        mach_port_deallocate(mach_task_self_, pacThread);
+    }
+    destroy_exception_port(exceptionPort);
     if (stack)
         free(stack);
 }

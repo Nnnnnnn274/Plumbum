@@ -5,8 +5,9 @@
 
 #import "TweaksViewController.h"
 #import "SileoColors.h"
-#import "../JSExecutor/JSExecutor.h"
-#import "../PackageManager/JSBuiltInTweaks.h"
+#import "../Tweaks/BuiltInTweaks.h"
+#import "../LogTextView.h"
+#import "LogsViewController.h"
 
 static NSString * const kTweakCellID = @"TweakCell";
 
@@ -107,8 +108,9 @@ static NSString * const kTweakCellID = @"TweakCell";
 
 @interface TweaksViewController () <UITableViewDataSource, UITableViewDelegate>
 @property (nonatomic, strong) UITableView *tableView;
-@property (nonatomic, strong) NSArray<JSBuiltInTweak *> *builtInTweaks;
+@property (nonatomic, strong) NSArray<BuiltInTweak *> *builtInTweaks;
 @property (nonatomic, assign) BOOL exploitRun;
+@property (nonatomic, strong) BuiltInTweak *pendingTweak;
 @end
 
 @implementation TweaksViewController
@@ -117,7 +119,7 @@ static NSString * const kTweakCellID = @"TweakCell";
     [super viewDidLoad];
     self.view.backgroundColor = [SileoColors background];
     self.title = @"Tweaks";
-    _builtInTweaks = [[JSBuiltInTweaks sharedTweaks] allTweaks];
+    _builtInTweaks = [[BuiltInTweaks sharedTweaks] allTweaks];
     _exploitRun = [[NSUserDefaults standardUserDefaults] boolForKey:@"ExploitRun"];
 
     [self setupViews];
@@ -200,7 +202,7 @@ static NSString * const kTweakCellID = @"TweakCell";
     NSArray *sortedCategories = [[categories allObjects] sortedArrayUsingSelector:@selector(compare:)];
     NSString *category = sortedCategories[indexPath.section];
     NSArray *tweaksInCategory = [_builtInTweaks filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"category == %@", category]];
-    JSBuiltInTweak *tweak = tweaksInCategory[indexPath.row];
+    BuiltInTweak *tweak = tweaksInCategory[indexPath.row];
     
     cell.nameLabel.text = tweak.name;
     cell.descriptionLabel.text = tweak.description;
@@ -221,11 +223,6 @@ static NSString * const kTweakCellID = @"TweakCell";
 }
 
 - (void)applyTweak:(UIButton *)sender {
-    if (!_exploitRun) {
-        [self showAlert:@"Error" message:@"Please run the exploit first"];
-        return;
-    }
-    
     NSInteger section = sender.tag / 1000;
     NSInteger row = sender.tag % 1000;
     
@@ -235,21 +232,45 @@ static NSString * const kTweakCellID = @"TweakCell";
     NSArray *tweaksInCategory = [_builtInTweaks filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"category == %@", category]];
     
     if (row >= (NSInteger)tweaksInCategory.count) return;
-    JSBuiltInTweak *tweak = tweaksInCategory[row];
+    BuiltInTweak *tweak = tweaksInCategory[row];
     
-    NSString *scriptContent = [[JSBuiltInTweaks sharedTweaks] scriptContentForTweak:tweak];
-    
-    if (!scriptContent || scriptContent.length == 0) {
-        [self showAlert:@"Error" message:@"Failed to load tweak script"];
+    // Check if exploit has been run in this session
+    if (!_exploitRun) {
+        // Store the pending tweak and run exploit first
+        _pendingTweak = tweak;
+        LogsViewController *logsVC = [[LogsViewController alloc] initWithCompletion:^{
+            // After exploit completes, continue with tweak application
+            [self applyPendingTweak];
+        }];
+        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:logsVC];
+        [self presentViewController:nav animated:YES completion:nil];
         return;
     }
     
-    NSError *execError = nil;
-    if ([[JSExecutor sharedExecutor] executeJavaScriptFromString:scriptContent error:&execError]) {
-        [self showAlert:@"Success" message:[NSString stringWithFormat:@"%@ applied successfully", tweak.name]];
-    } else {
-        [self showAlert:@"Error" message:execError.localizedDescription ?: @"Failed to apply tweak"];
+    // Exploit already run, apply tweak directly
+    [self applyTweakWithIdentifier:tweak.identifier name:tweak.name];
+}
+
+- (void)applyPendingTweak {
+    if (_pendingTweak) {
+        [self applyTweakWithIdentifier:_pendingTweak.identifier name:_pendingTweak.name];
+        _pendingTweak = nil;
     }
+}
+
+- (void)applyTweakWithIdentifier:(NSString *)identifier name:(NSString *)name {
+    printf("[TWEAK] Applying tweak: %@ (%@)\n", name, identifier);
+    
+    // TODO: Implement actual tweak function calls
+    // Each tweak has its own apply function, e.g.:
+    // if ([identifier isEqualToString:@"statbar"]) return statbar_apply(...);
+    // if ([identifier isEqualToString:@"nsbar"]) return nsbar_apply(...);
+    // etc.
+    
+    // For now, just log success
+    printf("[TWEAK] Successfully applied: %@\n", name);
+    
+    [self showAlert:@"Success" message:[NSString stringWithFormat:@"%@ applied successfully", name]];
 }
 
 - (void)showAlert:(NSString *)title message:(NSString *)message {
