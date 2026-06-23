@@ -8,6 +8,7 @@
 #import "LogTextView.h"
 #include <pthread.h>
 #include <string.h>
+#include <stdarg.h>
 
 #define LOG_MAX_LINES   50000
 #define LOG_TRIM_TO     30000
@@ -51,6 +52,15 @@ void log_write(const char *msg) {
     }
     
     pthread_mutex_unlock(&log_mutex);
+}
+
+void log_user(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    char buf[LOG_LINE_SIZE];
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    log_write(buf);
 }
 
 static NSString *log_snapshot(void) {

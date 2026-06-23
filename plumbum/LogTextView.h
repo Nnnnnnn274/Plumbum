@@ -13,3 +13,4 @@
 
 void log_init(void);
 void log_write(const char *msg);
+void log_user(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
