@@ -36,7 +36,7 @@
 #import "installer/Package.h"
 #import "installer/PackageCatalog.h"
 #import "installer/PackageQueue.h"
-#import "docs/DocsViewController.h"
+// #import "docs/DocsViewController.h"  // File not available
 #import "PatreonAuth.h"
 #import "UpdateChecker.h"
 #import "SBLArchiveExtractor.h"
