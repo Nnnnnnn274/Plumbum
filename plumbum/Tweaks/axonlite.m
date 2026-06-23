@@ -2772,20 +2772,6 @@ static void axn_group_mark_toggled(uint64_t group)
     gAxonToggledGroups[gAxonToggledGroupCount++] = group;
 }
 
-static bool axn_section_grouping_disabled(uint64_t section)
-{
-    for (int i = 0; i < gAxonDynGroupingDisabledCount; i++) {
-        if (gAxonDynGroupingDisabled[i] == section) return true;
-    }
-    return false;
-}
-
-static void axn_section_grouping_mark_disabled(uint64_t section)
-{
-    if (gAxonDynGroupingDisabledCount >= kAxonMaxDynGroupingSections) return;
-    gAxonDynGroupingDisabled[gAxonDynGroupingDisabledCount++] = section;
-}
-
 static uint64_t gAxonNCHeader = 0;
 static bool gAxonNCHeaderTransformed = false;
 
@@ -2882,38 +2868,6 @@ static void axn_expand_coalesced_groups(uint64_t listModel)
     r_settle_us(oldSettle);
 }
 
-typedef struct { char bundle[128]; uint64_t nsstr; } AXNSectionIdCache;
-static AXNSectionIdCache gAxonSectionIdCache[kAxonMaxRequests];
-static int gAxonSectionIdCount = 0;
-
-static uint64_t axn_section_id_for_bundle(const char *bundle)
-{
-    if (!bundle || !bundle[0]) return 0;
-    for (int i = 0; i < gAxonSectionIdCount; i++) {
-        if (strcmp(gAxonSectionIdCache[i].bundle, bundle) == 0) {
-            return gAxonSectionIdCache[i].nsstr;
-        }
-    }
-    if (gAxonSectionIdCount >= kAxonMaxRequests) return 0;
-    uint64_t ns = r_nsstr_retained(bundle);
-    if (!r_is_objc_ptr(ns)) return 0;
-    AXNSectionIdCache *e = &gAxonSectionIdCache[gAxonSectionIdCount++];
-    snprintf(e->bundle, sizeof(e->bundle), "%s", bundle);
-    e->nsstr = ns;
-    return ns;
-}
-
-static void axn_section_id_cache_clear(void)
-{
-    for (int i = 0; i < gAxonSectionIdCount; i++) {
-        if (r_is_objc_ptr(gAxonSectionIdCache[i].nsstr)) {
-            axn_release_remote_obj(gAxonSectionIdCache[i].nsstr);
-        }
-    }
-    memset(gAxonSectionIdCache, 0, sizeof(gAxonSectionIdCache));
-    gAxonSectionIdCount = 0;
-}
-
 static int axn_filtered_index(const char *bundle)
 {
     for (int i = 0; i < gAxonFilteredCount; i++) {
@@ -2922,33 +2876,13 @@ static int axn_filtered_index(const char *bundle)
     return -1;
 }
 
-static void axn_filtered_add(const char *bundle)
-{
-    if (!bundle || !bundle[0]) return;
-    if (axn_filtered_index(bundle) >= 0) return;
-    if (gAxonFilteredCount >= kAxonMaxRequests) return;
-    snprintf(gAxonFilteredBundles[gAxonFilteredCount++], 128, "%s", bundle);
-}
-
-static void axn_filtered_remove(const char *bundle)
-{
-    int idx = axn_filtered_index(bundle);
-    if (idx < 0) return;
-    for (int j = idx; j < gAxonFilteredCount - 1; j++) {
-        memcpy(gAxonFilteredBundles[j], gAxonFilteredBundles[j + 1], 128);
-    }
-    gAxonFilteredCount--;
-    memset(gAxonFilteredBundles[gAxonFilteredCount], 0, 128);
-}
-
 // Drive section-level filtering via
 // toggleFilteringForSectionIdentifier:shouldFilter:. This is the only
 // reversible primitive stock SB exposes on
 // NCNotificationStructuredListViewController — removeNotificationRequest:
 // works one-way but insertNotificationRequest: no-ops on a previously-
 // removed request, so the old remove/insert path could hide but never
-// restore. Section identifier is taken to be the bundle ID
-// (axn_section_id_for_bundle wraps it as an NSString).
+// restore. Section identifier is taken to be the bundle ID.
 // Per-request hide/restore. Hide uses removeNotificationRequest: on the
 // controller — empirically the only primitive that visually removes cells
 // on iOS 18's NCNotificationRootModernList listView. Restore tries
