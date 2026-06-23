@@ -260,9 +260,14 @@
 }
 
 - (NSString *)scriptContentForTweak:(JSBuiltInTweak *)tweak {
-    NSString *bundlePath = [[NSBundle mainBundle] bundlePath];
-    NSString *tweaksPath = [bundlePath stringByAppendingPathComponent:@"BuiltInTweaks"];
-    NSString *scriptPath = [tweaksPath stringByAppendingPathComponent:tweak.scriptPath];
+    NSString *scriptPath = [[NSBundle mainBundle] pathForResource:tweak.scriptPath.stringByDeletingPathExtension
+                                                           ofType:tweak.scriptPath.pathExtension
+                                                      inDirectory:@"BuiltInTweaks"];
+    
+    if (!scriptPath) {
+        NSLog(@"Failed to find built-in tweak script: %@", tweak.scriptPath);
+        return @"";
+    }
     
     NSError *error = nil;
     NSString *content = [NSString stringWithContentsOfFile:scriptPath encoding:NSUTF8StringEncoding error:&error];
