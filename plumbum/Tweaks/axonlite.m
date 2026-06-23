@@ -2868,6 +2868,38 @@ static void axn_expand_coalesced_groups(uint64_t listModel)
     r_settle_us(oldSettle);
 }
 
+typedef struct { char bundle[128]; uint64_t nsstr; } AXNSectionIdCache;
+static AXNSectionIdCache gAxonSectionIdCache[kAxonMaxRequests];
+static int gAxonSectionIdCount = 0;
+
+static uint64_t axn_section_id_for_bundle(const char *bundle)
+{
+    if (!bundle || !bundle[0]) return 0;
+    for (int i = 0; i < gAxonSectionIdCount; i++) {
+        if (strcmp(gAxonSectionIdCache[i].bundle, bundle) == 0) {
+            return gAxonSectionIdCache[i].nsstr;
+        }
+    }
+    if (gAxonSectionIdCount >= kAxonMaxRequests) return 0;
+    uint64_t ns = r_nsstr_retained(bundle);
+    if (!r_is_objc_ptr(ns)) return 0;
+    AXNSectionIdCache *e = &gAxonSectionIdCache[gAxonSectionIdCount++];
+    snprintf(e->bundle, sizeof(e->bundle), "%s", bundle);
+    e->nsstr = ns;
+    return ns;
+}
+
+static void axn_section_id_cache_clear(void)
+{
+    for (int i = 0; i < gAxonSectionIdCount; i++) {
+        if (r_is_objc_ptr(gAxonSectionIdCache[i].nsstr)) {
+            axn_release_remote_obj(gAxonSectionIdCache[i].nsstr);
+        }
+    }
+    memset(gAxonSectionIdCache, 0, sizeof(gAxonSectionIdCache));
+    gAxonSectionIdCount = 0;
+}
+
 static int axn_filtered_index(const char *bundle)
 {
     for (int i = 0; i < gAxonFilteredCount; i++) {
