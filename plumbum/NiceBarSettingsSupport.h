@@ -7,7 +7,7 @@
 //
 
 #import <UIKit/UIKit.h>
-#import "tweaks/nicebarlite.h"
+#import "Tweaks/nicebarlite.h"
 
 typedef void (^CyanideNiceBarWeatherCompletion)(BOOL ok,
                                                 NSString *text,

@@ -5,40 +5,78 @@
 
 #import "QueueReviewViewController.h"
 #import "PackageQueue.h"
+#import "PackageCatalog.h"
 #import "InstallProgressViewController.h"
+#import "../LogTextView.h"
 #import "../SettingsViewController.h"
 
-@interface QueueReviewViewController ()
-@property (nonatomic, strong) NSArray<Package *> *installs;
-@property (nonatomic, strong) NSArray<Package *> *uninstalls;
+typedef NS_ENUM(NSInteger, QueueReviewSection) {
+    QueueReviewSectionInstall = 0,
+    QueueReviewSectionUninstall,
+    QueueReviewSectionReApply,
+    QueueReviewSectionCount,
+};
+
+@interface QueueReviewViewController () <UITableViewDataSource, UITableViewDelegate>
+@property (nonatomic, strong) UITableView *tableView;
+@property (nonatomic, strong) UIButton *confirmButton;
+@property (nonatomic, strong) UIButton *clearButton;
+@property (nonatomic, strong) UILabel *emptyLabel;
 @end
+
+static BOOL QueuePackageIsHideHomeBar(Package *pkg)
+{
+    if (pkg.kind == PackageInstallKindHideHomeBar) return YES;
+    return NO;
+}
 
 @implementation QueueReviewViewController
 
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    self.title = @"Review Queue";
-    self.tableView.backgroundColor = self.view.backgroundColor ?: [UIColor systemBackgroundColor];
-    self.tableView.rowHeight = UITableViewAutomaticDimension;
-    self.tableView.estimatedRowHeight = 56.0;
-    [self.tableView registerClass:UITableViewCell.class forCellReuseIdentifier:@"queue"];
+    self.title = @"Queue";
+    self.view.backgroundColor = UIColor.systemGroupedBackgroundColor;
 
-    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc]
-        initWithBarButtonSystemItem:UIBarButtonSystemItemCancel
-                             target:self
-                             action:@selector(cancelTapped)];
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc]
-        initWithTitle:@"Apply"
-                style:UIBarButtonItemStyleDone
-               target:self
-               action:@selector(applyTapped)];
+    self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleInsetGrouped];
+    self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.tableView.dataSource = self;
+    self.tableView.delegate = self;
+    [self.view addSubview:self.tableView];
+
+    UIView *footer = [self buildFooter];
+    footer.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:footer];
+
+    self.emptyLabel = [[UILabel alloc] init];
+    self.emptyLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.emptyLabel.text = @"No pending changes\nQueue packages from the Packages tab";
+    self.emptyLabel.font = [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
+    self.emptyLabel.textColor = UIColor.tertiaryLabelColor;
+    self.emptyLabel.textAlignment = NSTextAlignmentCenter;
+    self.emptyLabel.numberOfLines = 0;
+    [self.view addSubview:self.emptyLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.tableView.topAnchor      constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [self.tableView.leadingAnchor  constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.tableView.bottomAnchor   constraintEqualToAnchor:footer.topAnchor],
+
+        [footer.leadingAnchor  constraintEqualToAnchor:self.view.leadingAnchor],
+        [footer.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [footer.bottomAnchor   constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],
+
+        [self.emptyLabel.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [self.emptyLabel.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor],
+        [self.emptyLabel.leadingAnchor  constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor constant:24.0],
+        [self.emptyLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.trailingAnchor constant:-24.0],
+    ]];
 
     [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(queueDidChange:)
+                                             selector:@selector(queueChanged:)
                                                  name:PackageQueueDidChangeNotification
-                                               object:[PackageQueue sharedQueue]];
-    [self reloadQueue];
+                                               object:nil];
 }
 
 - (void)dealloc
@@ -46,92 +84,458 @@
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
-- (void)queueDidChange:(NSNotification *)note
+- (void)viewWillAppear:(BOOL)animated
 {
-    (void)note;
-    [self reloadQueue];
+    [super viewWillAppear:animated];
+    [self refreshUI];
 }
 
-- (void)reloadQueue
+- (UIView *)buildFooter
 {
-    PackageQueue *queue = [PackageQueue sharedQueue];
-    self.installs = [queue.queuedInstalls copy];
-    self.uninstalls = [queue.queuedUninstalls copy];
-    [self.tableView reloadData];
-    self.navigationItem.rightBarButtonItem.enabled = (self.installs.count + self.uninstalls.count) > 0;
+    UIView *container = [[UIView alloc] init];
+    container.backgroundColor = UIColor.systemGroupedBackgroundColor;
+
+    UIButtonConfiguration *confirmCfg = [UIButtonConfiguration filledButtonConfiguration];
+    confirmCfg.title = @"Confirm";
+    confirmCfg.cornerStyle = UIButtonConfigurationCornerStyleLarge;
+    confirmCfg.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey,id> *(NSDictionary<NSAttributedStringKey,id> *incoming) {
+        NSMutableDictionary *attrs = [incoming mutableCopy];
+        attrs[NSFontAttributeName] = [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
+        return attrs;
+    };
+    self.confirmButton = [UIButton buttonWithConfiguration:confirmCfg primaryAction:[UIAction actionWithHandler:^(UIAction *_) {
+        [self didTapConfirm];
+    }]];
+    self.confirmButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [container addSubview:self.confirmButton];
+
+    UIButtonConfiguration *clearCfg = [UIButtonConfiguration plainButtonConfiguration];
+    clearCfg.title = @"Clear Queue";
+    clearCfg.baseForegroundColor = UIColor.systemRedColor;
+    clearCfg.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey,id> *(NSDictionary<NSAttributedStringKey,id> *incoming) {
+        NSMutableDictionary *attrs = [incoming mutableCopy];
+        attrs[NSFontAttributeName] = [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
+        return attrs;
+    };
+    self.clearButton = [UIButton buttonWithConfiguration:clearCfg primaryAction:[UIAction actionWithHandler:^(UIAction *_) {
+        [self didTapClear];
+    }]];
+    self.clearButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [container addSubview:self.clearButton];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.confirmButton.topAnchor      constraintEqualToAnchor:container.topAnchor constant:8.0],
+        [self.confirmButton.leadingAnchor  constraintEqualToAnchor:container.leadingAnchor constant:16.0],
+        [self.confirmButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-16.0],
+        [self.confirmButton.heightAnchor   constraintEqualToConstant:50.0],
+
+        [self.clearButton.topAnchor        constraintEqualToAnchor:self.confirmButton.bottomAnchor constant:2.0],
+        [self.clearButton.centerXAnchor    constraintEqualToAnchor:container.centerXAnchor],
+        [self.clearButton.bottomAnchor     constraintEqualToAnchor:container.bottomAnchor constant:-8.0],
+    ]];
+    return container;
 }
+
+- (void)refreshUI
+{
+    [self.tableView reloadData];
+    [self updateHomeBarWarningHeader];
+    NSInteger count = [PackageQueue sharedQueue].pendingCount;
+    self.emptyLabel.hidden = (count > 0);
+    self.tableView.hidden = (count == 0);
+    self.confirmButton.enabled = (count > 0);
+    self.clearButton.enabled = (count > 0);
+
+    NSString *confirmTitle;
+    if (count == 1) {
+        confirmTitle = @"Confirm 1 Change";
+    } else if (count > 1) {
+        confirmTitle = [NSString stringWithFormat:@"Confirm %ld Changes", (long)count];
+    } else {
+        confirmTitle = @"Confirm";
+    }
+    UIButtonConfiguration *cfg = self.confirmButton.configuration;
+    cfg.title = confirmTitle;
+    self.confirmButton.configuration = cfg;
+}
+
+- (UIView *)homeBarWarningHeaderView
+{
+    CGFloat width = self.tableView.bounds.size.width;
+    if (width <= 0.0) width = self.view.bounds.size.width;
+    if (width <= 0.0) width = UIScreen.mainScreen.bounds.size.width;
+
+    UIView *container = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, width, 1.0)];
+    container.backgroundColor = UIColor.systemGroupedBackgroundColor;
+
+    UIView *card = [[UIView alloc] init];
+    card.translatesAutoresizingMaskIntoConstraints = NO;
+    card.backgroundColor = [UIColor.systemOrangeColor colorWithAlphaComponent:0.14];
+    card.layer.cornerRadius = 16.0;
+    card.layer.borderWidth = 1.0;
+    card.layer.borderColor = [UIColor.systemOrangeColor colorWithAlphaComponent:0.28].CGColor;
+    [container addSubview:card];
+
+    UIImageView *icon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"exclamationmark.triangle.fill"]];
+    icon.translatesAutoresizingMaskIntoConstraints = NO;
+    icon.tintColor = UIColor.systemOrangeColor;
+    icon.contentMode = UIViewContentModeScaleAspectFit;
+    [card addSubview:icon];
+
+    UILabel *title = [[UILabel alloc] init];
+    title.translatesAutoresizingMaskIntoConstraints = NO;
+    title.text = @"Hide Home Bar must run alone";
+    title.font = [UIFont systemFontOfSize:16.0 weight:UIFontWeightBold];
+    title.textColor = UIColor.labelColor;
+    [card addSubview:title];
+
+    UILabel *body = [[UILabel alloc] init];
+    body.translatesAutoresizingMaskIntoConstraints = NO;
+    body.text = @"It edits the system home-indicator asset and then needs a respring. Confirm only Hide Home Bar, respring, then queue your other tweaks.";
+    body.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightRegular];
+    body.textColor = UIColor.secondaryLabelColor;
+    body.numberOfLines = 0;
+    [card addSubview:body];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [card.topAnchor constraintEqualToAnchor:container.topAnchor constant:12.0],
+        [card.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:16.0],
+        [card.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-16.0],
+        [card.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-8.0],
+
+        [icon.topAnchor constraintEqualToAnchor:card.topAnchor constant:14.0],
+        [icon.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:14.0],
+        [icon.widthAnchor constraintEqualToConstant:24.0],
+        [icon.heightAnchor constraintEqualToConstant:24.0],
+
+        [title.topAnchor constraintEqualToAnchor:card.topAnchor constant:12.0],
+        [title.leadingAnchor constraintEqualToAnchor:icon.trailingAnchor constant:10.0],
+        [title.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-14.0],
+
+        [body.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:4.0],
+        [body.leadingAnchor constraintEqualToAnchor:title.leadingAnchor],
+        [body.trailingAnchor constraintEqualToAnchor:title.trailingAnchor],
+        [body.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-12.0],
+    ]];
+
+    CGSize size = [container systemLayoutSizeFittingSize:CGSizeMake(width, 0.0)
+                           withHorizontalFittingPriority:UILayoutPriorityRequired
+                                 verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    container.frame = CGRectMake(0.0, 0.0, width, ceil(size.height));
+    return container;
+}
+
+- (void)updateHomeBarWarningHeader
+{
+    if (![self queueIncludesHideHomeBar]) {
+        self.tableView.tableHeaderView = nil;
+        return;
+    }
+    self.tableView.tableHeaderView = [self homeBarWarningHeaderView];
+}
+
+- (void)queueChanged:(NSNotification *)note
+{
+    [self refreshUI];
+}
+
+#pragma mark - Table
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
 {
-    (void)tableView;
-    return 2;
+    return QueueReviewSectionCount;
+}
+
+- (NSArray<Package *> *)reApplyPackages
+{
+    if ([self queueIncludesHideHomeBar]) return @[];
+
+    PackageQueue *q = [PackageQueue sharedQueue];
+    NSMutableArray<Package *> *out = [NSMutableArray array];
+    for (Package *p in [PackageCatalog allPackages]) {
+        if (!p.isInstalled) continue;
+        if ([q intentForPackage:p] == PackageQueueIntentUninstall) continue;
+        [out addObject:p];
+    }
+    return out;
+}
+
+- (NSArray<Package *> *)packagesForSection:(NSInteger)section
+{
+    PackageQueue *q = [PackageQueue sharedQueue];
+    switch ((QueueReviewSection)section) {
+        case QueueReviewSectionInstall:   return q.queuedInstalls;
+        case QueueReviewSectionUninstall: return q.queuedUninstalls;
+        case QueueReviewSectionReApply:   return [self reApplyPackages];
+        case QueueReviewSectionCount:     return @[];
+    }
+    return @[];
+}
+
+- (BOOL)queueIncludesHideHomeBar
+{
+    for (Package *pkg in [PackageQueue sharedQueue].queuedInstalls) {
+        if (QueuePackageIsHideHomeBar(pkg)) return YES;
+    }
+    for (Package *pkg in [PackageQueue sharedQueue].queuedUninstalls) {
+        if (QueuePackageIsHideHomeBar(pkg)) return YES;
+    }
+    return NO;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-    (void)tableView;
-    return section == 0 ? self.installs.count : self.uninstalls.count;
+    return (NSInteger)[self packagesForSection:section].count;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
 {
-    (void)tableView;
-    if (section == 0) return self.installs.count ? @"Install" : nil;
-    return self.uninstalls.count ? @"Uninstall" : nil;
-}
-
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"queue"];
-    if (!cell) {
-        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"queue"];
+    NSArray<Package *> *list = [self packagesForSection:section];
+    if (list.count == 0) return nil;
+    PackageInstallKind commonKind = list.firstObject.kind;
+    BOOL allSameKind = YES;
+    for (Package *pkg in list) {
+        if (pkg.kind != commonKind) {
+            allSameKind = NO;
+            break;
+        }
     }
-    Package *pkg = (indexPath.section == 0) ? self.installs[indexPath.row] : self.uninstalls[indexPath.row];
-    cell.selectionStyle = UITableViewCellSelectionStyleNone;
-    cell.accessoryType = UITableViewCellAccessoryNone;
-    cell.textLabel.numberOfLines = 0;
-    cell.detailTextLabel.numberOfLines = 0;
-    cell.textLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
-    cell.textLabel.text = pkg.name;
-    cell.detailTextLabel.text = pkg.shortDescription;
-    cell.detailTextLabel.textColor = UIColor.secondaryLabelColor;
-    cell.detailTextLabel.font = [UIFont systemFontOfSize:13];
-    return cell;
+    NSString *label;
+    switch ((QueueReviewSection)section) {
+        case QueueReviewSectionInstall:
+            if (allSameKind && commonKind == PackageInstallKindOTA) {
+                label = @"Disable";
+            } else if (allSameKind && commonKind == PackageInstallKindNanoRegistry) {
+                label = @"Apply";
+            } else if (allSameKind && commonKind == PackageInstallKindCallRecordingSound) {
+                label = @"Silence";
+            } else if (allSameKind && commonKind == PackageInstallKindHideHomeBar) {
+                label = @"Hide";
+            } else if (allSameKind && commonKind == PackageInstallKindRepoTweak) {
+                label = @"Install";
+            } else {
+                label = @"Activate";
+            }
+            break;
+        case QueueReviewSectionUninstall:
+            if (allSameKind && commonKind == PackageInstallKindOTA) {
+                label = @"Enable";
+            } else if (allSameKind && commonKind == PackageInstallKindNanoRegistry) {
+                label = @"Remove";
+            } else if (allSameKind && commonKind == PackageInstallKindCallRecordingSound) {
+                label = @"Restore";
+            } else if (allSameKind && commonKind == PackageInstallKindHideHomeBar) {
+                label = @"Restore";
+            } else if (allSameKind && commonKind == PackageInstallKindRepoTweak) {
+                label = @"Remove";
+            } else {
+                label = @"Deactivate";
+            }
+            break;
+        case QueueReviewSectionReApply:   label = @"Already Active";   break;
+        default:                          return nil;
+    }
+    return [NSString stringWithFormat:@"%@  ·  %ld", label, (long)list.count];
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
 {
-    (void)tableView;
-    if (section == 0 && self.installs.count == 0) return @"No installs queued.";
-    if (section == 1 && self.uninstalls.count == 0) return @"No removals queued.";
-    return nil;
-}
-
-- (void)cancelTapped
-{
-    [[PackageQueue sharedQueue] clear];
-    if (self.navigationController.viewControllers.firstObject == self) {
-        [self dismissViewControllerAnimated:YES completion:nil];
-    } else {
-        [self.navigationController popViewControllerAnimated:YES];
+    switch ((QueueReviewSection)section) {
+        case QueueReviewSectionInstall:
+            if (![self queueIncludesHideHomeBar]) return nil;
+            return @"Hide Home Bar must run by itself because it edits the system home-indicator asset and then needs a respring. Run it alone first, then apply other tweaks after the respring.";
+        case QueueReviewSectionReApply:
+            if ([self reApplyPackages].count == 0) return nil;
+            return @"These are already installed, not new pending changes. Confirming re-runs the chain so RemoteCall-backed tweaks come back after a force-quit. To stop one from running, deactivate it from the Packages tab, or use Reset All Packages in Settings → Quick Actions.";
+        default:
+            return nil;
     }
 }
 
-- (void)applyTapped
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    PackageQueue *queue = [PackageQueue sharedQueue];
-    if (queue.pendingCount <= 0) return;
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"QueueRow"];
+    if (!cell) {
+        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"QueueRow"];
+    }
+    NSArray<Package *> *packages = [self packagesForSection:indexPath.section];
+    if (indexPath.row >= (NSInteger)packages.count) {
+        cell.textLabel.text = @"No longer pending";
+        cell.textLabel.font = [UIFont systemFontOfSize:17.0 weight:UIFontWeightRegular];
+        cell.detailTextLabel.text = @"This queue row was already applied or cleared.";
+        cell.detailTextLabel.textColor = UIColor.secondaryLabelColor;
+        cell.detailTextLabel.font = [UIFont systemFontOfSize:12.0];
+        cell.imageView.image = [UIImage systemImageNamed:@"checkmark.circle"];
+        cell.imageView.tintColor = UIColor.tertiaryLabelColor;
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        cell.accessoryView = nil;
+        cell.accessoryType = UITableViewCellAccessoryNone;
+        return cell;
+    }
 
-    InstallProgressViewController *progress = [[InstallProgressViewController alloc] init];
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:progress];
-    nav.modalPresentationStyle = UIModalPresentationAutomatic;
+    Package *pkg = packages[indexPath.row];
+    BOOL isQuickLoader = [pkg.enabledKey isEqualToString:kSettingsQuickLoaderEnabled];
+    if (isQuickLoader) {
+        NSString *scriptName = [[NSUserDefaults standardUserDefaults] stringForKey:@"QuickLoaderSourceScriptName"];
+        cell.textLabel.text = scriptName.length ? [NSString stringWithFormat:@"QuickLoader: %@", scriptName] : pkg.name;
+    } else {
+        cell.textLabel.text = pkg.name;
+    }
+    cell.textLabel.font = [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
 
-    __weak typeof(self) weakSelf = self;
-    [self presentViewController:nav animated:YES completion:^{
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self) return;
-        [queue commit];
+    QueueReviewSection s = (QueueReviewSection)indexPath.section;
+    switch (s) {
+        case QueueReviewSectionInstall:
+            switch (pkg.kind) {
+                case PackageInstallKindOTA:
+                    cell.detailTextLabel.text = @"Pending OTA disable";
+                    cell.detailTextLabel.textColor = UIColor.systemOrangeColor;
+                    break;
+                case PackageInstallKindNanoRegistry:
+                    cell.detailTextLabel.text = @"Pending override apply";
+                    cell.detailTextLabel.textColor = self.view.tintColor;
+                    break;
+                case PackageInstallKindCallRecordingSound:
+                    cell.detailTextLabel.text = @"Pending sound silence";
+                    cell.detailTextLabel.textColor = UIColor.systemOrangeColor;
+                    break;
+                case PackageInstallKindHideHomeBar:
+                    cell.detailTextLabel.text = @"Runs alone; respring required";
+                    cell.detailTextLabel.textColor = UIColor.systemOrangeColor;
+                    break;
+                case PackageInstallKindRepoTweak:
+                    cell.detailTextLabel.text = @"Repo tweak install pending";
+                    cell.detailTextLabel.textColor = UIColor.systemGreenColor;
+                    break;
+                default:
+                    cell.detailTextLabel.text = @"Activation pending";
+                    cell.detailTextLabel.textColor = UIColor.systemGreenColor;
+                    break;
+            }
+            break;
+        case QueueReviewSectionUninstall:
+            switch (pkg.kind) {
+                case PackageInstallKindOTA:
+                    cell.detailTextLabel.text = @"Pending OTA enable";
+                    cell.detailTextLabel.textColor = UIColor.systemGreenColor;
+                    break;
+                case PackageInstallKindNanoRegistry:
+                    cell.detailTextLabel.text = @"Pending override remove";
+                    cell.detailTextLabel.textColor = UIColor.systemRedColor;
+                    break;
+                case PackageInstallKindCallRecordingSound:
+                    cell.detailTextLabel.text = @"Pending sound restore";
+                    cell.detailTextLabel.textColor = UIColor.systemGreenColor;
+                    break;
+                case PackageInstallKindHideHomeBar:
+                    cell.detailTextLabel.text = @"Pending respring restore";
+                    cell.detailTextLabel.textColor = UIColor.systemGreenColor;
+                    break;
+                case PackageInstallKindRepoTweak:
+                    cell.detailTextLabel.text = @"Repo tweak removal pending";
+                    cell.detailTextLabel.textColor = UIColor.systemRedColor;
+                    break;
+                default:
+                    cell.detailTextLabel.text = @"Deactivation pending";
+                    cell.detailTextLabel.textColor = UIColor.systemRedColor;
+                    break;
+            }
+            break;
+        case QueueReviewSectionReApply:
+            cell.detailTextLabel.text = @"Active; will refresh";
+            cell.detailTextLabel.textColor = UIColor.secondaryLabelColor;
+            break;
+        default:
+            cell.detailTextLabel.text = nil;
+            break;
+    }
+    cell.detailTextLabel.font = [UIFont systemFontOfSize:12.0];
+    cell.imageView.image = [UIImage systemImageNamed:pkg.symbolName];
+    cell.imageView.tintColor = (s == QueueReviewSectionReApply)
+        ? UIColor.tertiaryLabelColor
+        : self.view.tintColor;
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    cell.accessoryView = nil;
+    cell.accessoryType = UITableViewCellAccessoryNone;
+    return cell;
+}
+
+- (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
+    trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    // Swipe-to-remove only applies to the pending queue rows. "Will Re-Apply"
+    // is informational — to drop one, the user uninstalls it from the
+    // Packages tab or runs Reset All Packages.
+    QueueReviewSection s = (QueueReviewSection)indexPath.section;
+    if (s != QueueReviewSectionInstall && s != QueueReviewSectionUninstall) return nil;
+
+    NSArray<Package *> *packages = [self packagesForSection:indexPath.section];
+    if (indexPath.row >= (NSInteger)packages.count) return nil;
+
+    Package *pkg = packages[indexPath.row];
+    UIContextualAction *remove = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive
+                                                                         title:@"Remove"
+                                                                       handler:^(UIContextualAction * _Nonnull action, __kindof UIView * _Nonnull sourceView, void (^ _Nonnull completionHandler)(BOOL)) {
+        [[PackageQueue sharedQueue] removePackage:pkg];
+        completionHandler(YES);
     }];
+    return [UISwipeActionsConfiguration configurationWithActions:@[remove]];
+}
+
+#pragma mark - Actions
+
+- (void)didTapConfirm
+{
+    if ([PackageQueue sharedQueue].pendingCount == 0) return;
+    NSInteger count = [PackageQueue sharedQueue].pendingCount;
+    BOOL includesHideHomeBar = NO;
+    for (Package *pkg in [PackageQueue sharedQueue].queuedInstalls) {
+        if (QueuePackageIsHideHomeBar(pkg)) {
+            includesHideHomeBar = YES;
+            break;
+        }
+    }
+    if (!includesHideHomeBar) {
+        for (Package *pkg in [PackageQueue sharedQueue].queuedUninstalls) {
+            if (QueuePackageIsHideHomeBar(pkg)) {
+                includesHideHomeBar = YES;
+                break;
+            }
+        }
+    }
+    if (includesHideHomeBar && count > 1) {
+        UIAlertController *ac = [UIAlertController
+            alertControllerWithTitle:@"Run Hide Home Bar Alone"
+                             message:@"Hide Home Bar edits the system home-indicator asset and needs a respring after it applies. Remove the other pending changes, run Hide Home Bar by itself, then apply other tweaks after the respring."
+                      preferredStyle:UIAlertControllerStyleAlert];
+        [ac addAction:[UIAlertAction actionWithTitle:@"OK"
+                                               style:UIAlertActionStyleDefault
+                                             handler:nil]];
+        [self presentViewController:ac animated:YES completion:nil];
+        return;
+    }
+
+    InstallProgressViewController *vc = [[InstallProgressViewController alloc] init];
+    vc.promptsForHideHomeBarRespring = includesHideHomeBar;
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+    nav.modalPresentationStyle = UIModalPresentationAutomatic;
+    [self presentViewController:nav animated:YES completion:^{
+        log_user("[INSTALLER] ── Applying %ld pending change(s) ──\n", (long)count);
+        [[PackageQueue sharedQueue] commit];
+    }];
+}
+
+- (void)didTapClear
+{
+    if ([PackageQueue sharedQueue].pendingCount == 0) return;
+        UIAlertController *ac = [UIAlertController alertControllerWithTitle:@"Clear Queue?"
+                                                                message:@"Discard all pending activation / deactivation changes."
+                                                         preferredStyle:UIAlertControllerStyleAlert];
+    [ac addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [ac addAction:[UIAlertAction actionWithTitle:@"Clear" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *_) {
+        [[PackageQueue sharedQueue] clear];
+    }]];
+    [self presentViewController:ac animated:YES completion:nil];
 }
 
 @end

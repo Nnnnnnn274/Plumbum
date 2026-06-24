@@ -32,13 +32,18 @@ typedef NS_ENUM(NSInteger, PackageInstallKind) {
     // those backups when present.
     PackageInstallKindCallRecordingSound = 3,
 
-    // One-shot DirtyZero-style MaterialKit asset page zero. Installing hides
+    // One-shot MaterialKit asset page zero. Installing hides
     // the home bar after respring; restoring needs a respring.
     PackageInstallKindHideHomeBar = 4,
 
     // Direct settings tool. It has a Settings bundle but no install queue,
     // active state, or PackageQueue commit step.
     PackageInstallKindDirectTool = 5,
+
+    // Dynamic package fetched from a RepoTweaks source. Known repo IDs can map
+    // to Cyanide's native tweak backends; other compatible JS snippets are
+    // imported into QuickLoader and applied through the normal run-actions path.
+    PackageInstallKindRepoTweak = 6,
 };
 
 @interface Package : NSObject
@@ -54,6 +59,12 @@ typedef NS_ENUM(NSInteger, PackageInstallKind) {
 @property (nonatomic, readonly, assign)   PackageInstallKind kind;
 @property (nonatomic, readonly, copy, nullable) NSString *enabledKey;
 @property (nonatomic, readonly, assign)   BOOL isNew;
+@property (nonatomic, readonly, copy, nullable) NSString *repoURL;
+@property (nonatomic, readonly, copy, nullable) NSString *repoTweakID;
+@property (nonatomic, readonly, copy, nullable) NSString *repoScriptURL;
+@property (nonatomic, readonly, copy, nullable) NSString *repoName;
+@property (nonatomic, readonly, copy, nullable) NSString *repoNativeEnabledKey;
+@property (nonatomic, readonly, assign) BOOL repoTweakUsesQuickLoader;
 
 // SettingsSection enum value that corresponds to this package's bundle in the
 // Settings tab. NSIntegerMax means the package has no Settings bundle

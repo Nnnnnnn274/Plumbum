@@ -8,6 +8,7 @@
 #import "../SettingsViewController.h"
 #import "../PatreonAuth.h"
 #import "../LogTextView.h"
+#import "../Tweaks/private_compat.h"
 
 @implementation Package
 
@@ -36,6 +37,12 @@
         _enabledKey       = [enabledKey copy];
         _isNew            = isNew;
         _settingsSection  = NSIntegerMax;
+        _repoURL          = nil;
+        _repoTweakID      = nil;
+        _repoScriptURL    = nil;
+        _repoName         = nil;
+        _repoNativeEnabledKey = nil;
+        _repoTweakUsesQuickLoader = NO;
     }
     return self;
 }
@@ -51,6 +58,7 @@
         case PackageInstallKindNanoRegistry:
         case PackageInstallKindCallRecordingSound:
         case PackageInstallKindHideHomeBar:
+        case PackageInstallKindRepoTweak:
             // Manual-control packages: no persistent "installed" state from
             // the app's POV. The detail view shows an Apply/Remove menu and
             // each commit is a fresh one-shot run.
@@ -129,6 +137,7 @@
                          installed ? "hide" : "restore");
             }
             return;
+        case PackageInstallKindRepoTweak:
         case PackageInstallKindDirectTool:
             return;
     }

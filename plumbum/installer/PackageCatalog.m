@@ -6,7 +6,7 @@
 #import "PackageCatalog.h"
 #import "../SettingsViewController.h"
 #import "../PatreonAuth.h"
-#import "../tweaks/private_compat.h"
+#import "../Tweaks/private_compat.h"
 
 @implementation PackageCatalog
 
